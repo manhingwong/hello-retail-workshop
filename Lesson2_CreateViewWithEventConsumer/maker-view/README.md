@@ -1,6 +1,6 @@
 # Product Catalog
 
-This project defines the product catalog builder and API.
+This project defines the product catalog builder.
 
 ## Builder
 
@@ -27,12 +27,4 @@ Example image/create message:
   "subjectId" : "product/4468125",
   "image" : "s3://..."
 }
-```
-
-## API
-
-The API for the Product Catalog is a RESTful API offered via ApiGateway.  There are two resources upon which a GET can be performed:
-```
-/categories
-/products?category=<a-category>
 ```
