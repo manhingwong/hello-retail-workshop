@@ -1,0 +1,155 @@
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+service: winner-api
+
+custom:
+  private: ${file(../../private.yml)}
+
+provider:
+  name: aws
+#  deploymentBucket: ${self:custom.private.deploymentBucket}
+  runtime: nodejs4.3
+  profile: ${self:custom.private.profile}
+  region: ${self:custom.private.region}
+
+functions:
+  contributions:
+    role:
+      Fn::GetAtt: [ WinnerApiContributionsReader, Arn ]
+    handler: catalogApi.contributions
+    environment:
+      STAGE: ${opt:stage}
+      TABLE_CONTRIBUTIONS_NAME:
+        Ref: Contributions
+    events:
+      - http:
+          path: contributions
+          method: get
+          cors: true
+  scores:
+    role:
+      Fn::GetAtt: [ WinnerApiScoresReader, Arn ]
+    handler: catalogApi.scores
+    environment:
+      STAGE: ${opt:stage}
+      TABLE_SCORES_NAME:
+        Ref: Scores
+    events:
+      - http:
+          path: scores
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    # Log Group
+    ContributionsLogGroup:
+      Type: 'AWS::Logs::LogGroup'
+      Properties:
+        LogGroupName: '/aws/lambda/${self:service}-${opt:stage}-contributions'
+        RetentionInDays: 7
+    ScoresLogGroup:
+      Type: 'AWS::Logs::LogGroup'
+      Properties:
+        LogGroupName: '/aws/lambda/${self:service}-${opt:stage}-scores'
+        RetentionInDays: 7
+    # Winner Tables Roles
+    WinnerApiContributionsReader: # role for Contributions Lambda
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${opt:stage}WinnerApiContributionsReader
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                AWS: # role ARNs that are allowed to read from the Contributions Table
+                  - 'arn:aws:iam::${self:custom.private.accountId}:role/${self:custom.private.teamRole}'
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                Service: 'lambda.amazonaws.com'
+        ManagedPolicyArns:
+          - ${self:custom.private.teamPolicy}
+        Policies:
+          - PolicyName: CreateAndWriteToLogStream
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: 'Allow'
+                  Action:
+                    - 'logs:CreateLogStream'
+                  Resource:
+                    Fn::GetAtt: [ ContributionsLogGroup, Arn ]
+                - Effect: 'Allow'
+                  Action:
+                    - 'logs:PutLogEvents'
+                  Resource:
+                    Fn::Join:
+                      - ':'
+                      - - Fn::GetAtt: [ ContributionsLogGroup, Arn ]
+                        - '*'
+          - PolicyName: ReadFromContributions
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -  Effect: 'Allow'
+                   Action:
+                     - 'dynamodb:Scan'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - Ref: Contributions
+    WinnerApiScoresReader: # role for Scores Lambda
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${opt:stage}WinnerApiScoresReader
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                AWS: # role ARNs that are allowed to read from the Scores Table
+                  - 'arn:aws:iam::${self:custom.private.accountId}:role/${self:custom.private.teamRole}'
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                Service: 'lambda.amazonaws.com'
+        ManagedPolicyArns:
+          - ${self:custom.private.teamPolicy}
+        Policies:
+          - PolicyName: CreateAndWriteToLogStream
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: 'Allow'
+                  Action:
+                    - 'logs:CreateLogStream'
+                  Resource:
+                    Fn::GetAtt: [ ScoresLogGroup, Arn ]
+                - Effect: 'Allow'
+                  Action:
+                    - 'logs:PutLogEvents'
+                  Resource:
+                    Fn::Join:
+                      - ':'
+                      - - Fn::GetAtt: [ ScoresLogGroup, Arn ]
+                        - '*'
+          - PolicyName: ReadFromScores
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -  Effect: 'Allow'
+                   Action:
+                     - 'dynamodb:GetItem'
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - Ref: Scores

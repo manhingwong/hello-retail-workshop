@@ -1,0 +1,49 @@
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+service: ingress-stream
+
+custom:
+  private: ${file(../../private.yml)}
+
+provider:
+  name: aws
+#  deploymentBucket: ${self:custom.private.deploymentBucket}
+  runtime: nodejs4.3
+  profile: ${self:custom.private.profile}
+  region: ${self:custom.private.region}
+
+resources:
+  Resources:
+    # Stream
+    Stream:
+      Type: 'AWS::Kinesis::Stream'
+      Properties:
+        Name: ${opt:stage}Stream
+        ShardCount: 3
+    StreamWriter: # role for producers
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${opt:stage}StreamWriter
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS: # role ARNs that are allowed to write to this stream
+                  - '${self:custom.private.coreStream.fanoutRoleArn}'
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - ${self:custom.private.teamPolicy}
+        Policies:
+          - PolicyName: WriteToStream
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -  Effect: Allow
+                   Action:
+                     - 'kinesis:DescribeStream'
+                     - 'kinesis:PutRecord'
+                     - 'kinesis:PutRecords'
+                   Resource:
+                     Fn::GetAtt: [ Stream, Arn ]
