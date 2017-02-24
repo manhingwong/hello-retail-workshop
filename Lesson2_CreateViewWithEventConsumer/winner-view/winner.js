@@ -7,6 +7,7 @@ const aws = require('aws-sdk') // eslint-disable-line import/no-unresolved, impo
 const eventSchema = require('./retail-stream-schema-ingress.json')
 const productCreateSchema = require('./product-create-schema.json')
 const productImageSchema = require('./product-image-schema.json')
+const productPurchaseSchema = require('./product-purchase-schema.json')
 
 // TODO generalize this?  it is used by but not specific to this module
 const makeSchemaId = schema => `${schema.self.vendor}/${schema.self.name}/${schema.self.version}`
@@ -14,11 +15,13 @@ const makeSchemaId = schema => `${schema.self.vendor}/${schema.self.name}/${sche
 const eventSchemaId = makeSchemaId(eventSchema)
 const productCreateSchemaId = makeSchemaId(productCreateSchema)
 const productImageSchemaId = makeSchemaId(productImageSchema)
+const productPurchaseSchemaId = makeSchemaId(productPurchaseSchema)
 
 const ajv = new AJV()
 ajv.addSchema(eventSchema, eventSchemaId)
 ajv.addSchema(productCreateSchema, productCreateSchemaId)
 ajv.addSchema(productImageSchema, productImageSchemaId)
+ajv.addSchema(productPurchaseSchema, productPurchaseSchemaId)
 
 const dynamo = new aws.DynamoDB.DocumentClient()
 
@@ -26,7 +29,8 @@ const constants = {
   // self
   MODULE: 'winner-view/winner.js',
   // methods
-  METHOD_UPDATE_WINNER_TABLES: 'updateWinnerTables',
+  METHOD_UPDATE_CONTRIBUTIONS_TABLES: 'updateContributionsTable',
+  METHOD_UPDATE_SCORES_TABLES: 'updateScoresTable',
   METHOD_PROCESS_EVENT: 'processEvent',
   METHOD_PROCESS_KINESIS_EVENT: 'processKinesisEvent',
   // errors
@@ -38,10 +42,10 @@ const constants = {
 
 const impl = {
   /**
-   * Update winner tables, if applicable.  Example event:
+   * Update contributions tables.  Example event:
    * {
    *   "schema": "com.nordstrom/retail-stream-ingress/1-0-0",
-   *   "origin": "hello-retail/product-producer-merchant",//TODO I'm making this up
+   *   "origin": "hello-retail/product-producer-creator/uniqueId/friendlyName
    *   "timeOrigin": "2017-01-12T18:29:25.171Z",
    *   "data": {
    *     "schema": "com.nordstrom/product/create/1-0-0",
@@ -49,22 +53,80 @@ const impl = {
    *     "brand": "POLO RALPH LAUREN",
    *     "name": "Polo Ralph Lauren 3-Pack Socks",
    *     "description": "PAGE:/s/polo-ralph-lauren-3-pack-socks/4579874",
-   *     "category": "Socks for Men",
-   *     "source": "RobG",//TODO I'm making this up
+   *     "category": "Socks for Men"
    *   }
    * }
-   * @param event The event to check for applicability to the winner tables.
+   * @param event Either a product/create or a product/image event.
    * @param complete The callback to inform of completion, with optional error parameter.
    */
-  updateWinnerTables: (event, complete) => {
+  updateContributionsTable: (role, event, complete) => {
     const updated = Date.now()
 
-    let role = impl.eventRole(event);
-    if (!role || !event.source) {
-      // TODO remove console.log after checking this works as expected
-      console.log(`${constants.MODULE} Skipping event from origin ${event.data.origin} with source ${event.data.source} as irrelevant.`);
-      return complete();
+    const updateCallback = (err) => {
+      if (err) {
+        complete(`${constants.METHOD_UPDATE_CONTRIBUTIONS_TABLES} - errors updating DynamoDb for ${role}: ${err}`)
+      } else {
+        complete()
+      }
     }
+
+    const expression = [
+      'set',
+      '#c=if_not_exists(#c,:c),',
+      '#cb=if_not_exists(#cb,:cb),',
+      '#u=:u,',
+      '#ub=:ub,',
+    ]
+    if (role === 'creator') {
+      expression.push('#cr=if_not_exists(#cr,:cr)')
+    } else if (role === 'photographer') {
+      expression.push('#ph=:ph')
+    }
+
+    const dbParamsContributions = {
+      TableName: constants.TABLE_CONTRIBUTIONS_NAME,
+      Key: {
+        productId: event.data.id,
+      },
+      UpdateExpression: expression.join(' '),
+      ExpressionAttributeNames: {
+        '#c': 'created',
+        '#cb': 'createdBy',
+        '#u': 'updated',
+        '#ub': 'updatedBy',
+        '#cr': 'creator',
+        '#ph': 'photographer',
+      },
+      ExpressionAttributeValues: {
+        ':c': updated,
+        ':cb': event.origin,
+        ':u': updated,
+        ':ub': event.origin,
+        ':cr': event.origin,
+        ':ph': event.origin,
+      },
+      ReturnValues: 'NONE',
+      ReturnConsumedCapacity: 'NONE',
+      ReturnItemCollectionMetrics: 'NONE',
+    }
+    dynamo.update(dbParamsContributions, updateCallback)
+  },
+  /**
+   * Update scores table.  Example event:
+   * {
+   *   "schema": "com.nordstrom/retail-stream-ingress/1-0-0",
+   *   "origin": "hello-retail/product-purchaser/uniqueId/friendlyName
+   *   "timeOrigin": "2017-01-12T18:29:25.171Z",
+   *   "data": {
+   *     "schema": "com.nordstrom/product/purchase/1-0-0",
+   *     "id": "4579874"
+   *   }
+   * }
+   * @param event The purchase event.
+   * @param complete The callback to inform of completion, with optional error parameter.
+   */
+  updateScoresTable: (event, complete) => {
+    const updated = Date.now()
 
     let priorErr
     const updateCallback = (err) => {
@@ -75,115 +137,132 @@ const impl = {
           priorErr = false
         }
       } else if (priorErr && err) { // second update result, if an error was previously received and we have a new one
-        complete(`${constants.METHOD_UPDATE_WINNER_TABLES} - errors updating DynamoDb: ${[priorErr, err]}`)
+        complete(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors updating DynamoDb: ${[priorErr, err]}`)
       } else if (priorErr || err) {
-        complete(`${constants.METHOD_UPDATE_WINNER_TABLES} - error updating DynamoDb: ${priorErr || err}`)
+        complete(`${constants.METHOD_UPDATE_SCORES_TABLES} - error updating DynamoDb: ${priorErr || err}`)
       } else { // second update result if error was not previously seen
         complete()
       }
     }
 
-    if (role === 'buyer') {
-      //TODO get contributors first
-      const dbParamsScores = {
-        TableName: constants.TABLE_SCORES_NAME,
-        Key: {
-          userId: event.data.source,
-          role: role,
-        },//TODO increment appropriate atomic counter (create if necessary)
-        UpdateExpression: [
-          'set',
-          '#c=if_not_exists(#c,:c),',
-          '#cb=if_not_exists(#cb,:cb),',
-          '#u=:u,',
-          '#ub=:ub,',
-          '#b=:b,',
-          '#n=:n,',
-          '#d=:d,',
-          '#cat=:cat',
-        ].join(' '),
-        ExpressionAttributeNames: {
-          '#c': 'created',
-          '#cb': 'createdBy',
-          '#u': 'updated',
-          '#ub': 'updatedBy',
-          '#b': 'brand',
-          '#n': 'name',
-          '#d': 'description',
-          '#cat': 'category',
-        },
-        ExpressionAttributeValues: {
-          ':c': updated,
-          ':cb': event.origin,
-          ':u': updated,
-          ':ub': event.origin,
-          ':b': event.data.brand,
-          ':n': event.data.name,
-          ':d': event.data.description,
-          ':cat': event.data.category,
-        },
-        ReturnValues: 'NONE',
-        ReturnConsumedCapacity: 'NONE',
-        ReturnItemCollectionMetrics: 'NONE',
-      }
-      dynamo.update(dbParamsScores, updateCallback)
-    } else {
-      let expression = [
-        'set',
-        '#c=if_not_exists(#c,:c),',
-        '#cb=if_not_exists(#cb,:cb),',
-        '#u=:u,',
-        '#ub=:ub,',
-      ];
-      if (role === 'merchant') {
-        expression.push('#cr=:cr');
-      } else if (role === 'photographer') {
-        expression.push('#ph=:ph');
-      }
-
-      const dbParamsContributions = {
-        TableName: constants.TABLE_CONTRIBUTIONS_NAME,
-        Key: {
-          productId: event.data.id,
-        },
-        UpdateExpression: expression.join(' '),
-        ExpressionAttributeNames: {
-          '#c': 'created',
-          '#cb': 'createdBy',
-          '#u': 'updated',
-          '#ub': 'updatedBy',
-          '#cr': 'creator',
-          '#ph': 'photographer',
-        },
-        ExpressionAttributeValues: {
-          ':c': updated,
-          ':cb': event.origin,
-          ':u': updated,
-          ':ub': event.origin,
-          ':cr': event.data.source,
-          ':ph': event.data.source,
-        },
-        ReturnValues: 'NONE',
-        ReturnConsumedCapacity: 'NONE',
-        ReturnItemCollectionMetrics: 'NONE',
-      }
-      dynamo.update(dbParamsContributions, updateCallback)
+    const dbParamsContributions = {
+      Key: {
+        productId: event.data.id,
+      },
+      TableName: constants.TABLE_CONTRIBUTIONS_NAME,
+      AttributesToGet: [
+        'creator',
+        'photographer',
+      ],
+      ConsistentRead: false,
+      ReturnConsumedCapacity: 'NONE',
     }
+    dynamo.get(dbParamsContributions, (err, data) => {
+      if (err) {
+        complete(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting product ${event.data.id} from DynamoDb table ${constants.TABLE_CONTRIBUTIONS_NAME}: ${err}`)
+      } else if (!data.Item || (!data.Item.creator && !data.Item.photographer)) {
+        console.log(`No contributor information for product ${event.data.id}, so no effect on scores.`)
+        complete()
+      } else {
+        if (data.Item.creator) {
+          const dbParamsCreator = {
+            TableName: constants.TABLE_SCORES_NAME,
+            Key: {
+              userId: data.Item.creator,
+              role: 'creator',
+            },
+            UpdateExpression: [
+              'set',
+              '#c=if_not_exists(#c,:c),',
+              '#cb=if_not_exists(#cb,:cb),',
+              '#u=:u,',
+              '#ub=:ub,',
+              '#sc=#sc + :num',
+            ].join(' '),
+            ExpressionAttributeNames: {
+              '#c': 'created',
+              '#cb': 'createdBy',
+              '#u': 'updated',
+              '#ub': 'updatedBy',
+              '#sc': 'score',
+            },
+            ExpressionAttributeValues: {
+              ':c': updated,
+              ':cb': event.origin,
+              ':u': updated,
+              ':ub': event.origin,
+              ':num': { N: '1' },
+            },
+            ReturnValues: 'NONE',
+            ReturnConsumedCapacity: 'NONE',
+            ReturnItemCollectionMetrics: 'NONE',
+          }
+          dynamo.update(dbParamsCreator, updateCallback)
+        } else {
+          updateCallback()
+        }
+        if (data.Item.photographer) {
+          const dbParamsPhotographer = {
+            TableName: constants.TABLE_SCORES_NAME,
+            Key: {
+              userId: data.Item.photographer,
+              role: 'photographer',
+            },
+            UpdateExpression: [
+              'set',
+              '#c=if_not_exists(#c,:c),',
+              '#cb=if_not_exists(#cb,:cb),',
+              '#u=:u,',
+              '#ub=:ub,',
+              '#sc=#sc + :num',
+            ].join(' '),
+            ExpressionAttributeNames: {
+              '#c': 'created',
+              '#cb': 'createdBy',
+              '#u': 'updated',
+              '#ub': 'updatedBy',
+              '#sc': 'score',
+            },
+            ExpressionAttributeValues: {
+              ':c': updated,
+              ':cb': event.origin,
+              ':u': updated,
+              ':ub': event.origin,
+              ':num': { N: '1' },
+            },
+            ReturnValues: 'NONE',
+            ReturnConsumedCapacity: 'NONE',
+            ReturnItemCollectionMetrics: 'NONE',
+          }
+          dynamo.update(dbParamsPhotographer, updateCallback)
+        } else {
+          updateCallback()
+        }
+      }
+    })
   },
   /**
-   * Determine the role of the event
+   * Determine the source of the event from the origin, which is of format widget/role/uniqueId/friendlyName.
    * @param event The event to validate and process with the appropriate logic
    */
-  eventRole: (event) => {
-      if (event.origin === 'hello-retail/product-producer-merchant') {
-          return 'merchant';
-      } else if (event.origin === 'hello-retail/product-producer-photographer') {
-          return 'photographer';
-      } else if (event.origin === 'hello-retail/product-buyer') {
-          return 'buyer';
-      } else {
-          return null;
+  eventSource: (origin) => {
+    const parts = origin.split('/')
+    if (parts.length > 2) {
+      return {
+        uniqueId: parts[2],
+        friendlyName: parts.length === 3 ? parts[2] : parts[3],
       }
+    } else if (parts.length === 2) {
+      return {
+        uniqueId: parts[1],
+        friendlyName: parts[1],
+      }
+    } else {
+      return {
+        uniqueId: 'UNKNOWN',
+        friendlyName: 'UNKNOWN',
+      }
+    }
   },
   /**
    * Process the given event, reporting failure or success to the given callback
@@ -200,14 +279,20 @@ const impl = {
     } else if (event.data.schema === productCreateSchemaId) {
       if (!ajv.validate(productCreateSchemaId, event.data)) {
         complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productCreateSchema}' schema. Errors: ${ajv.errorsText()}`)
-      } else {//TODO see if you need eventRole at all or the way we determine event is here, in which case split updateWinnerTables and dump eventRole
-        impl.updateWinnerTables(event, complete)
+      } else {
+        impl.updateContributionsTable('creator', event, complete)
       }
     } else if (event.data.schema === productImageSchemaId) {
       if (!ajv.validate(productImageSchemaId, event.data)) {
         complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productImageSchema}' schema. Errors: ${ajv.errorsText()}`)
       } else {
-        impl.updateWinnerTables(event, complete)
+        impl.updateContributionsTable('photographer', event, complete)
+      }
+    } else if (event.data.schema === productPurchaseSchemaId) {
+      if (!ajv.validate(productPurchaseSchemaId, event.data)) {
+        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productPurchaseSchema}' schema. Errors: ${ajv.errorsText()}`)
+      } else {
+        impl.updateScoresTable(event, complete)
       }
     } else {
       // TODO remove console.log and pass the above message once we are only receiving subscribed events
