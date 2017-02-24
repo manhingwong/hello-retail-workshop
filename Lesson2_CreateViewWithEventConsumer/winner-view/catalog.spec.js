@@ -4,7 +4,7 @@
 
 // const expect = require('chai').expect;
 
-// const catalog = require('./catalog.js');
+// const catalog = require('./winner.js');
 
 describe('Product Catalog Processor Unit Tests', () => {
   let consoleLog

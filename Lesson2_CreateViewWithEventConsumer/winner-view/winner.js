@@ -6,39 +6,42 @@ const aws = require('aws-sdk') // eslint-disable-line import/no-unresolved, impo
 // TODO Get these from a better place later
 const eventSchema = require('./retail-stream-schema-ingress.json')
 const productCreateSchema = require('./product-create-schema.json')
+const productImageSchema = require('./product-image-schema.json')
 
 // TODO generalize this?  it is used by but not specific to this module
 const makeSchemaId = schema => `${schema.self.vendor}/${schema.self.name}/${schema.self.version}`
 
 const eventSchemaId = makeSchemaId(eventSchema)
 const productCreateSchemaId = makeSchemaId(productCreateSchema)
+const productImageSchemaId = makeSchemaId(productImageSchema)
 
 const ajv = new AJV()
 ajv.addSchema(eventSchema, eventSchemaId)
 ajv.addSchema(productCreateSchema, productCreateSchemaId)
+ajv.addSchema(productImageSchema, productImageSchemaId)
 
 const dynamo = new aws.DynamoDB.DocumentClient()
 
 const constants = {
   // self
-  MODULE: 'product-catalog/catalog.js',
+  MODULE: 'winner-view/winner.js',
   // methods
-  METHOD_PUT_PRODUCT: 'putProduct',
+  METHOD_UPDATE_WINNER_TABLES: 'updateWinnerTables',
   METHOD_PROCESS_EVENT: 'processEvent',
   METHOD_PROCESS_KINESIS_EVENT: 'processKinesisEvent',
   // errors
   BAD_MSG: 'bad msg:',
   // resources
-  TABLE_PRODUCT_CATEGORY_NAME: process.env.TABLE_PRODUCT_CATEGORY_NAME,
-  TABLE_PRODUCT_CATALOG_NAME: process.env.TABLE_PRODUCT_CATALOG_NAME,
+  TABLE_CONTRIBUTIONS_NAME: process.env.TABLE_CONTRIBUTIONS_NAME,
+  TABLE_SCORES_NAME: process.env.TABLE_SCORES_NAME,
 }
 
 const impl = {
   /**
-   * Put the given product in to the dynamo catalog.  Example event:
+   * Update winner tables, if applicable.  Example event:
    * {
-   *   "schema": "com.nordstrom/retail-stream/1-0-0",
-   *   "origin": "hello-retail/product-producer-automation",
+   *   "schema": "com.nordstrom/retail-stream-ingress/1-0-0",
+   *   "origin": "hello-retail/product-producer-merchant",//TODO I'm making this up
    *   "timeOrigin": "2017-01-12T18:29:25.171Z",
    *   "data": {
    *     "schema": "com.nordstrom/product/create/1-0-0",
@@ -46,14 +49,23 @@ const impl = {
    *     "brand": "POLO RALPH LAUREN",
    *     "name": "Polo Ralph Lauren 3-Pack Socks",
    *     "description": "PAGE:/s/polo-ralph-lauren-3-pack-socks/4579874",
-   *     "category": "Socks for Men"
+   *     "category": "Socks for Men",
+   *     "source": "RobG",//TODO I'm making this up
    *   }
    * }
-   * @param event The product to put in the catalog.
+   * @param event The event to check for applicability to the winner tables.
    * @param complete The callback to inform of completion, with optional error parameter.
    */
-  putProduct: (event, complete) => {
+  updateWinnerTables: (event, complete) => {
     const updated = Date.now()
+
+    let role = impl.eventRole(event);
+    if (!role || !event.source) {
+      // TODO remove console.log after checking this works as expected
+      console.log(`${constants.MODULE} Skipping event from origin ${event.data.origin} with source ${event.data.source} as irrelevant.`);
+      return complete();
+    }
+
     let priorErr
     const updateCallback = (err) => {
       if (priorErr === undefined) { // first update result
@@ -63,83 +75,115 @@ const impl = {
           priorErr = false
         }
       } else if (priorErr && err) { // second update result, if an error was previously received and we have a new one
-        complete(`${constants.METHOD_PUT_PRODUCT} - errors updating DynamoDb: ${[priorErr, err]}`)
+        complete(`${constants.METHOD_UPDATE_WINNER_TABLES} - errors updating DynamoDb: ${[priorErr, err]}`)
       } else if (priorErr || err) {
-        complete(`${constants.METHOD_PUT_PRODUCT} - error updating DynamoDb: ${priorErr || err}`)
+        complete(`${constants.METHOD_UPDATE_WINNER_TABLES} - error updating DynamoDb: ${priorErr || err}`)
       } else { // second update result if error was not previously seen
         complete()
       }
     }
-    const dbParamsCategory = {
-      TableName: constants.TABLE_PRODUCT_CATEGORY_NAME,
-      Key: {
-        category: event.data.category,
-      },
-      UpdateExpression: [
-        'set',
-        '#c=if_not_exists(#c,:c),',
-        '#cb=if_not_exists(#cb,:cb),',
-        '#u=:u,',
-        '#ub=:ub',
-      ].join(' '),
-      ExpressionAttributeNames: {
-        '#c': 'created',
-        '#cb': 'createdBy',
-        '#u': 'updated',
-        '#ub': 'updatedBy',
-      },
-      ExpressionAttributeValues: {
-        ':c': updated,
-        ':cb': event.origin,
-        ':u': updated,
-        ':ub': event.origin,
-      },
-      ReturnValues: 'NONE',
-      ReturnConsumedCapacity: 'NONE',
-      ReturnItemCollectionMetrics: 'NONE',
-    }
-    dynamo.update(dbParamsCategory, updateCallback)
-    const dbParamsProduct = {
-      TableName: constants.TABLE_PRODUCT_CATALOG_NAME,
-      Key: {
-        id: event.data.id,
-      },
-      UpdateExpression: [
+
+    if (role === 'buyer') {
+      //TODO get contributors first
+      const dbParamsScores = {
+        TableName: constants.TABLE_SCORES_NAME,
+        Key: {
+          userId: event.data.source,
+          role: role,
+        },//TODO increment appropriate atomic counter (create if necessary)
+        UpdateExpression: [
+          'set',
+          '#c=if_not_exists(#c,:c),',
+          '#cb=if_not_exists(#cb,:cb),',
+          '#u=:u,',
+          '#ub=:ub,',
+          '#b=:b,',
+          '#n=:n,',
+          '#d=:d,',
+          '#cat=:cat',
+        ].join(' '),
+        ExpressionAttributeNames: {
+          '#c': 'created',
+          '#cb': 'createdBy',
+          '#u': 'updated',
+          '#ub': 'updatedBy',
+          '#b': 'brand',
+          '#n': 'name',
+          '#d': 'description',
+          '#cat': 'category',
+        },
+        ExpressionAttributeValues: {
+          ':c': updated,
+          ':cb': event.origin,
+          ':u': updated,
+          ':ub': event.origin,
+          ':b': event.data.brand,
+          ':n': event.data.name,
+          ':d': event.data.description,
+          ':cat': event.data.category,
+        },
+        ReturnValues: 'NONE',
+        ReturnConsumedCapacity: 'NONE',
+        ReturnItemCollectionMetrics: 'NONE',
+      }
+      dynamo.update(dbParamsScores, updateCallback)
+    } else {
+      let expression = [
         'set',
         '#c=if_not_exists(#c,:c),',
         '#cb=if_not_exists(#cb,:cb),',
         '#u=:u,',
         '#ub=:ub,',
-        '#b=:b,',
-        '#n=:n,',
-        '#d=:d,',
-        '#cat=:cat',
-      ].join(' '),
-      ExpressionAttributeNames: {
-        '#c': 'created',
-        '#cb': 'createdBy',
-        '#u': 'updated',
-        '#ub': 'updatedBy',
-        '#b': 'brand',
-        '#n': 'name',
-        '#d': 'description',
-        '#cat': 'category',
-      },
-      ExpressionAttributeValues: {
-        ':c': updated,
-        ':cb': event.origin,
-        ':u': updated,
-        ':ub': event.origin,
-        ':b': event.data.brand,
-        ':n': event.data.name,
-        ':d': event.data.description,
-        ':cat': event.data.category,
-      },
-      ReturnValues: 'NONE',
-      ReturnConsumedCapacity: 'NONE',
-      ReturnItemCollectionMetrics: 'NONE',
+      ];
+      if (role === 'merchant') {
+        expression.push('#cr=:cr');
+      } else if (role === 'photographer') {
+        expression.push('#ph=:ph');
+      }
+
+      const dbParamsContributions = {
+        TableName: constants.TABLE_CONTRIBUTIONS_NAME,
+        Key: {
+          productId: event.data.id,
+        },
+        UpdateExpression: expression.join(' '),
+        ExpressionAttributeNames: {
+          '#c': 'created',
+          '#cb': 'createdBy',
+          '#u': 'updated',
+          '#ub': 'updatedBy',
+          '#cr': 'creator',
+          '#ph': 'photographer',
+        },
+        ExpressionAttributeValues: {
+          ':c': updated,
+          ':cb': event.origin,
+          ':u': updated,
+          ':ub': event.origin,
+          ':cr': event.data.source,
+          ':ph': event.data.source,
+        },
+        ReturnValues: 'NONE',
+        ReturnConsumedCapacity: 'NONE',
+        ReturnItemCollectionMetrics: 'NONE',
+      }
+      dynamo.update(dbParamsContributions, updateCallback)
     }
-    dynamo.update(dbParamsProduct, updateCallback)
+  },
+  /**
+   * Determine the role of the event
+   * @param event The event to validate and process with the appropriate logic
+   */
+  eventRole: (event) => {
+      if (event.origin === 'hello-retail/product-producer-merchant') {
+          return 'merchant';
+      } else if (event.origin === 'hello-retail/product-producer-photographer') {
+          return 'photographer';
+      } else if (event.origin === 'hello-retail/product-buyer') {
+          return 'buyer';
+      } else {
+          return null;
+      }
   },
   /**
    * Process the given event, reporting failure or success to the given callback
@@ -156,8 +200,14 @@ const impl = {
     } else if (event.data.schema === productCreateSchemaId) {
       if (!ajv.validate(productCreateSchemaId, event.data)) {
         complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productCreateSchema}' schema. Errors: ${ajv.errorsText()}`)
+      } else {//TODO see if you need eventRole at all or the way we determine event is here, in which case split updateWinnerTables and dump eventRole
+        impl.updateWinnerTables(event, complete)
+      }
+    } else if (event.data.schema === productImageSchemaId) {
+      if (!ajv.validate(productImageSchemaId, event.data)) {
+        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productImageSchema}' schema. Errors: ${ajv.errorsText()}`)
       } else {
-        impl.putProduct(event, complete)
+        impl.updateWinnerTables(event, complete)
       }
     } else {
       // TODO remove console.log and pass the above message once we are only receiving subscribed events
