@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/schema#",
   "self": {
     "vendor": "com.nordstrom",
-    "name": "category/items",
+    "name": "score/items",
     "format": "jsonschema",
     "version": "1-0-0"
   },
@@ -10,10 +10,14 @@
   "items": {
     "type": "object",
     "properties": {
-      "category":   { "type": "string" }
+      "role":        { "type": "string" },
+      "score":         { "type": "string" },
+      "userId":  { "type": "string" }
     },
     "required": [
-      "category"
+      "role ",
+      "score",
+      "userId"
     ],
     "additionalProperties": false
   },

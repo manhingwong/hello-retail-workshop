@@ -2,21 +2,22 @@
   "$schema": "http://json-schema.org/schema#",
   "self": {
     "vendor": "com.nordstrom",
-    "name": "products/request",
+    "name": "scores/request",
     "format": "jsonschema",
     "version": "1-0-0"
   },
   "type": "object",
   "properties": {
-    "path":                   { "type": "string", "pattern": "^/products$" },
+    "path":                   { "type": "string", "pattern": "^/scores$" },
     "httpMethod":             { "type": "string", "pattern": "^GET$" },
     "queryStringParameters":  {
       "type": "object",
       "properties": {
-        "category":           { "type": "string" }
+        "role":           { "type": "string" },
+        "limit":          { "type": "string" }
       },
       "required": [
-        "category"
+        "role"
       ],
       "additionalProperties": false
     }

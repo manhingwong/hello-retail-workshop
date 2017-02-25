@@ -146,7 +146,7 @@ resources:
               Statement:
                 -  Effect: 'Allow'
                    Action:
-                     - 'dynamodb:GetItem'
+                   #  - 'dynamodb:GetItem'
                      - 'dynamodb:Query'
                    Resource:
                     Fn::Join:
