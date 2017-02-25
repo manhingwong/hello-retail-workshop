@@ -17,7 +17,7 @@ Hello-retail is a Nordstrom open-source project. It is intended to showcase a si
 ##Why?
 Serverless architectures offer incredible promise to reduce code complexity, operations costs, improve scalability, and when used correctly, security.  When you go serverless, you probably quickly arrive at event-driven architectures.  These are naturally matched with stateless event-driven AWS Lambda functions.
 
-![Serverless all the things!](Images/serverless-artillery-diagram.png)
+![Serverless all the things!](Images/hello-retail-icon.png)
 
 In this diagram we see how ***
 

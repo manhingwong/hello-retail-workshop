@@ -1,5 +1,8 @@
 #Lesson 0: Before the workshop
-Goal: Confirm access to a personal or public cloud V2 account, install node, update credentials, install serverless deployment framework
+Goal: Confirm access to a personal or public cloud V2 account, install node, update credentials, install serverless deployment framework, clone the repo
+
+###Step 0: Slack!
+Setup nordstrom.slack.com and subscribe to the #serverless-discuss channel, this is where you'll be able to ask and help answer questions.
 
 ###Step 1: Install node.js
 Ensure that you have [Node.js](https://nodejs.org/en/) (v4 or better) installed.
@@ -66,10 +69,20 @@ $ export AWS_SESSION_TOKEN=<session-token>             # this one is optional
 export proxy=https://your.proxy.com:1234
 ```
 
-Regardless, install the the things
+Regardless, install the serverless.com deployment framework - this will make it easy to deploy serverless components to AWS
 ```sh
 $ sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share} # this is for those of you who have corrupted your file system
 $ npm install -g serverless
 ```
 
-###Step 4: Deploy a simple lambda function
+###Step 4: clone the repo on your local machine
+
+Go to https://github.com/Nordstrom/hello-retail-workshop and fork our Repo, then clone it locally.
+```sh
+$ git clone $ git clone https://github.com/Nordstrom/hello-retail-workshop.git
+```
+Adding the original repository as your upstream will allow you to merge improvements and bug fixes created by the Nordstrom community
+For more information on using github, go to https://help.github.com/articles/fork-a-repo/
+
+###Step 5: confirm that you can deploy to your account.
+***try lesson 1?
