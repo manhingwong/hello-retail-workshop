@@ -1,7 +1,4 @@
-#Lesson 1: Hello Retail Stream
-Goal: cd to retail-stream directory, deploy serverless.yml
-
-#Lesson 2: Create your local lcopy of the retail stream.
+#Lesson 1: Create your local copy of the retail stream.
 Goal: In order to prevent resource conflicts, you will have your own copy of the hello-retail kinesis event stream in your account.  Once you've created it, we will begin publishing events to it on the day of the conference using a fan-out lambda function on our core stream.
 
 ###Step 1: In your cloned repo, go to the retail-stream directory
