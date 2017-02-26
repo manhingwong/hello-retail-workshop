@@ -6,6 +6,7 @@ Now that you know how to create an event consumer and populate a DynamoDB table,
 * Product detail page views
 * Category page views
 * Purchase events
+* ***add specifics here
 
 ####Hot products
 We know that customers that view the same item multiple times are interested in the product.  Create a table and web service that shows the top products that have been frequently viewed (three or more times) by the most unique users.
