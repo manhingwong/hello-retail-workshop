@@ -1,8 +1,9 @@
 # Hello, Retail! The workshop.
-This github repository is intended to accompany the working code in https://github.com/Nordstrom/hello-retail
-For our Nordstrom internal serverless conference, participants take part in an interactive exercise using hello-retail, they then extend it using this workshop.
-
 ![Serverless all the things!](Images/hello-retail-icon.png)
+
+This github repository is intended to accompany the working code in https://github.com/Nordstrom/hello-retail
+
+For our Nordstrom internal serverless conference, participants take part in an interactive exercise using hello-retail, they then extend it using this workshop.
 
 ###TL;DR:
 Hello-retail is a Nordstrom open-source project. It is intended to showcase a simple 100% serverless, event-driven retail architecture.  All code and patterns are intended to be re-usable for scalable applications large and small.
@@ -12,19 +13,21 @@ Hello-retail is a Nordstrom open-source project. It is intended to showcase a si
 * **AWS Kinesis** The stream.  Technically a durable replicated log.
 * **AWS API Gateway** A fully-managed web-service front-end.  Resources, methods, authentication.  Trigger lambdas to do the work.
 * **AWS DynamoDB** NoSQL tables.  Used here as a simple key-value store.
-* **Serverless Application Framework** is an open source project with lots of handy tools to manage serverless configurations, shared code, and deploy your work.
+* **Serverless.com Framework** is an open source project with lots of handy tools to manage serverless configurations, shared code, and deploy your work to AWS.
 
 ##Why?
-Serverless architectures offer incredible promise to reduce code complexity, operations costs, improve scalability, and when used correctly, security.  When you go serverless, you probably quickly arrive at event-driven architectures.  These are naturally matched with stateless event-driven AWS Lambda functions.
+Serverless architectures offer incredible promise to reduce code complexity, operations costs, improve scalability, and when used correctly, security.  When you go serverless, you probably quickly arrive at event-driven architectures.  These are naturally matched with stateless event-driven AWS Lambda functions.  A complete systems architecture that takes advantage of a unified central log/stream has benefits to extensibility, simplicity, backup and restore, and databases-as-cattle.  This project attempts to explore and prove out some of these concepts in a production ready and scalable format.
 
-![Serverless all the things!](Images/hello-retail-icon.png)
+![Serverless all the things!](Images/hello-retail-workshop.png)
 
-In this diagram we see how ***
+In this diagram we see a lambda consuming from the stream and populating two DynamoDB tables.  The first keeps track of which merchants and photographers are associated with which products.  The second table maintains a tally of sales per merchant and sales per photographer.  The web service that is exposed through API Gateway invokes a lambda that reads from this aggregated view.
 
 ##What does all of this cost?
-AWS Lambda charges based on both the number of invocations and the duration of each function. For simple functions like these, assume about $.20 per million invocations.
-AWS API Gateway is about $3.50 per million calls.
-AWS DynamoDB for up to 5TPS in this example should cost less than $4 a month.
+* AWS Lambda charges based on both the number of invocations and the duration of each function. For simple functions like these, assume about $.20 per million invocations.
+* AWS API Gateway is about $3.50 per million calls.
+* AWS DynamoDB for up to 5TPS in this example should cost less than $4 a month.
+
+So, if we had 10,000,000 events a day (~200 events per second peak) and 1,000 reads from the web service, we'd expect about $2 in Lambda, $.0035 in API Gateway, and $10 a day in DynamoDB.
 
 ##Kudos!
 * Huge props and all credit for the hello-retail code is due to Erik Erikson and Greg Smith, our senior developers behind all of this code.
