@@ -2,7 +2,7 @@
 This github repository is intended to accompany the working code in https://github.com/Nordstrom/hello-retail
 For our Nordstrom internal serverless conference, participants take part in an interactive exercise using hello-retail, they then extend it using this workshop.
 
-![Serverless all the things!](Images/artillery-shooting-lambda.png)
+![Serverless all the things!](Images/hello-retail-icon.png)
 
 ###TL;DR:
 Hello-retail is a Nordstrom open-source project. It is intended to showcase a simple 100% serverless, event-driven retail architecture.  All code and patterns are intended to be re-usable for scalable applications large and small.
