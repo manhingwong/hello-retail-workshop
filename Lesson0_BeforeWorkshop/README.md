@@ -1,5 +1,5 @@
 #Lesson 0: Before the workshop
-Goal: Confirm access to a personal or public cloud V2 account, install node, update credentials, install serverless deployment framework, clone the repo
+Goal: Install everything needed for the workshop and confirm that you can login to a public cloud v2 account.
 
 ###Step 0: Slack!
 Setup nordstrom.slack.com and subscribe to the #serverless-discuss channel, this is where you'll be able to ask and help answer questions.
@@ -8,22 +8,18 @@ Setup nordstrom.slack.com and subscribe to the #serverless-discuss channel, this
 Ensure that you have [Node.js](https://nodejs.org/en/) (v4 or better) installed.
 
 ###Step 2: Ensure that you have access to a Nordstrom Public Cloud V2 account
-Nordstrom Public Cloud V2 is a substantial improvement to Pub Cloud V1.  It gives you far greater access and control to all of the things.  This workshop will not work on a public cloud v1 account.  If you are not a Nordstrom engineer and you're reading this a public account will work just fine.
+Nordstrom Public Cloud V2 is a substantial improvement to Pub Cloud V1.  It gives you far greater access and control to all of the things.  This workshop will not work on a public cloud v1 account.  If you are not a Nordstrom engineer and you're reading this a generic AWS account will work just fine.  If you're at a company that limits your ability to create roles/buckets/API Gateways your mileage will vary.
 
 ####Option 1: Your team already has a public cloud v2 account
-***Need details on how to check this here.
+***add details on how to check this here.
 
 ####Option 2: Log in to the public cloud team's public cloud v2 sandbox account. (If you signed up for the workshop you should have access, if not ask for hel on the #serverless-discuss slack channel.
-***add details on pub cloud v2 account
+***add details on pub cloud v2 sandbox account
 
 ####Option 3: Use your own personal AWS account
-****Rough cost estimate?
-$4 for Kinesis
-<$1 for Lambda
-<$1 for DynamoDB
-<$1 for API Gateway
+This should cost less than $10, just remember to delete all resources when you're done.
 
-###Step 2: serverless deployments requires AWS credentials
+###Step 2: serverless deployments require AWS credentials
 
 ####Option 1:
 Go to AWS IAM console --> users --> select your user ID --> security credentials tab
@@ -71,18 +67,20 @@ export proxy=https://your.proxy.com:1234
 
 Regardless, install the serverless.com deployment framework - this will make it easy to deploy serverless components to AWS
 ```sh
-$ sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share} # this is for those of you who have corrupted your file system
+$ sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share}
+# the above is for those of you who have corrupted your file system
 $ npm install -g serverless
 ```
 
 ###Step 4: clone the repo on your local machine
 
 Go to https://github.com/Nordstrom/hello-retail-workshop and fork our Repo, then clone it locally.
+
+From your workshop directory:
 ```sh
-$ git clone $ git clone https://github.com/Nordstrom/hello-retail-workshop.git
+$ git clone https://github.com/Nordstrom/hello-retail-workshop.git
 ```
-Adding the original repository as your upstream will allow you to merge improvements and bug fixes created by the Nordstrom community
 For more information on using github, go to https://help.github.com/articles/fork-a-repo/
 
 ###Step 5: confirm that you can deploy to your account.
-***try lesson 1?
+It's worth trying to complete Lesson1 - you should be able to deploy a Kinesis stream to either your account or the sandbox.
