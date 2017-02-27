@@ -16,7 +16,7 @@ provider:
 functions:
   winner:
     role:
-      Fn::GetAtt: [ WinnersReaderWriter, Arn ]
+      Fn::GetAtt: [ WinnerReaderWriter, Arn ]
     handler: catalog.processKinesisEvent
     environment:
       STAGE: ${opt:stage}
@@ -78,6 +78,10 @@ resources:
                 KeyType: HASH
               - AttributeName: score
                 KeyType: RANGE
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - userId
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
@@ -86,7 +90,7 @@ resources:
       Type: AWS::IAM::Role
       Properties:
         Path: /
-        RoleName: ${optstage}WinnerReaderWriter
+        RoleName: ${opt:stage}WinnerReaderWriter
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -111,7 +115,9 @@ resources:
                     - 'logs:CreateLogStream'
                   Resource:
                     Fn::Join:
-                      Fn::GetAtt: [ WinnerLogGroup, Arn ]
+                      - ':'
+                      - - Fn::GetAtt: [ WinnerLogGroup, Arn ]
+                        - '*'
                 - Effect: 'Allow'
                   Action:
                     - 'logs:PutLogEvents'
@@ -130,7 +136,7 @@ resources:
                     - 'kinesis:GetShardIterator'
                     - 'kinesis:DescribeStream'
                     - 'kinesis:ListStreams'
-                   Resource: '${self:custom.stream}'
+                  Resource: ${self:custom.stream}
           - PolicyName: WriteToWinner
             PolicyDocument:
               Version: '2012-10-17'
