@@ -16,11 +16,10 @@ functions:
   contributions:
     role:
       Fn::GetAtt: [ WinnerApiContributionsReader, Arn ]
-    handler: catalogApi.contributions
+    handler: winnerApi.contributions
     environment:
       STAGE: ${opt:stage}
-      TABLE_CONTRIBUTIONS_NAME:
-        Ref: Contributions
+      TABLE_CONTRIBUTIONS_NAME: ${opt:stage}-Contributions
     events:
       - http:
           path: contributions
@@ -29,11 +28,10 @@ functions:
   scores:
     role:
       Fn::GetAtt: [ WinnerApiScoresReader, Arn ]
-    handler: catalogApi.scores
+    handler: winnerApi.scores
     environment:
       STAGE: ${opt:stage}
-      TABLE_SCORES_NAME:
-        Ref: Scores
+      TABLE_SCORES_NAME: ${opt:stage}-Scores
     events:
       - http:
           path: scores
@@ -102,7 +100,7 @@ resources:
                     Fn::Join:
                       - '/'
                       - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
-                        - Ref: Contributions
+                        - ${opt:stage}-Contributions
     WinnerApiScoresReader: # role for Scores Lambda
       Type: AWS::IAM::Role
       Properties:
@@ -152,4 +150,4 @@ resources:
                     Fn::Join:
                       - '/'
                       - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
-                        - Ref: Scores
+                        - ${opt:stage}-Scores

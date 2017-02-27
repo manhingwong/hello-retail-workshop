@@ -15,7 +15,6 @@
       "userId":  { "type": "string" }
     },
     "required": [
-      "role ",
       "score",
       "userId"
     ],

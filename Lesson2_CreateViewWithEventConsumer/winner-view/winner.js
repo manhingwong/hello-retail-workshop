@@ -242,29 +242,6 @@ const impl = {
     })
   },
   /**
-   * Determine the source of the event from the origin, which is of format widget/role/uniqueId/friendlyName.
-   * @param event The event to validate and process with the appropriate logic
-   */
-  eventSource: (origin) => {
-    const parts = origin.split('/')
-    if (parts.length > 2) {
-      return {
-        uniqueId: parts[2],
-        friendlyName: parts.length === 3 ? parts[2] : parts[3],
-      }
-    } else if (parts.length === 2) {
-      return {
-        uniqueId: parts[1],
-        friendlyName: parts[1],
-      }
-    } else {
-      return {
-        uniqueId: 'UNKNOWN',
-        friendlyName: 'UNKNOWN',
-      }
-    }
-  },
-  /**
    * Process the given event, reporting failure or success to the given callback
    * @param event The event to validate and process with the appropriate logic
    * @param complete The callback with which to report any errors

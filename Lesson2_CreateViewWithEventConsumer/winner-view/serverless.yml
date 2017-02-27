@@ -70,7 +70,7 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-        TableName: ${self:custom.stage}-Scores
+        TableName: ${opt:stage}-Scores
         GlobalSecondaryIndexes:
           - IndexName: ScoresByRole
             KeySchema:

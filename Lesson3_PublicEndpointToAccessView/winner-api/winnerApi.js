@@ -53,7 +53,7 @@ const impl = {
   }),
   clientError: (method, schemaId, ajvErrors, event) => impl.response(
     400,
-    `${method} ${constants.INVALID_REQUEST} could not validate request to '${schemaId}' schema. Errors: '${ajvErrors}' found in event: '${JSON.stringify(event)}'`
+    `${method} ${constants.INVALID_REQUEST} could not validate request to '${schemaId}' schema. Errors: '${ajvErrors}' found in event: '${JSON.stringify(event)}'`,
   ),
   dynamoError: (method, err) => {
     console.log(err)
@@ -68,14 +68,44 @@ const impl = {
     return impl.response(500, `${method} - ${constants.INTEGRATION_ERROR}`)
   },
   success: items => impl.response(200, JSON.stringify(items)),
+  extractor: (item) => {
+    const extract = impl.eventSource(item.userId)
+    return {
+      userId: `${extract.friendlyName} (${extract.userId})`,
+      score: item.score,
+    }
+  },
   best: (limit, role, items) => {
-    if (!items || items.length === 0){
+    if (!items || items.length === 0) {
       return impl.success(`Not one ${role} found to have sold anything.`)
     }
     if (limit) {
-      return impl.success(items.splice(0, limit))
+      return impl.success(items.splice(0, limit).map(impl.extractor))
     } else {
-      return impl.success(items[0])
+      return impl.success(impl.extractor(items[0]))
+    }
+  },
+  /**
+   * Determine the source of the event from the origin, which is of format widget/role/uniqueId/friendlyName.
+   * @param event The event to validate and process with the appropriate logic
+   */
+  eventSource: (origin) => {
+    const parts = origin.split('/')
+    if (parts.length > 2) {
+      return {
+        uniqueId: parts[2],
+        friendlyName: parts.length === 3 ? parts[2] : parts[3],
+      }
+    } else if (parts.length === 2) {
+      return {
+        uniqueId: parts[1],
+        friendlyName: parts[1],
+      }
+    } else {
+      return {
+        uniqueId: 'UNKNOWN',
+        friendlyName: 'UNKNOWN',
+      }
     }
   },
 }
