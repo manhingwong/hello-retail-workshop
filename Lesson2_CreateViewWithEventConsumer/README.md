@@ -15,6 +15,7 @@ Here you can see that the lambda is parsing events and updating the contribution
 ###Step 4: Deploy these resources, roles, and lambda function
 From your winner-view directory
 ```sh
+$ npm install
 $ serverless deploy serverless.yml -s <your stage name>
 ```
 ###Step 5: confirm that the lambda function is deployed
