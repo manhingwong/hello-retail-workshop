@@ -17,7 +17,7 @@ functions:
   winner:
     role:
       Fn::GetAtt: [ WinnerReaderWriter, Arn ]
-    handler: catalog.processKinesisEvent
+    handler: winner.processKinesisEvent
     environment:
       STAGE: ${opt:stage}
       TABLE_CONTRIBUTIONS_NAME:

@@ -2,7 +2,7 @@
   "name": "hello-retail-product-catalog-api",
   "version": "0.0.1",
   "description": "An API to obtain product and category information from the Product Catalog",
-  "main": "catalogApi.js",
+  "main": "winnerApi.js",
   "scripts": {
     "test": "echo \"Error: tests executed by root hello-retail package.json\" && exit 1"
   },

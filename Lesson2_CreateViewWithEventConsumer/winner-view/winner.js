@@ -77,10 +77,26 @@ const impl = {
       '#u=:u,',
       '#ub=:ub,',
     ]
+    const attNames = {
+      '#c': 'created',
+      '#cb': 'createdBy',
+      '#u': 'updated',
+      '#ub': 'updatedBy',
+    }
+    const attValues = {
+      ':c': updated,
+      ':cb': event.origin,
+      ':u': updated,
+      ':ub': event.origin,
+    }
     if (role === 'creator') {
       expression.push('#cr=if_not_exists(#cr,:cr)')
+      attNames['#cr'] = 'creator'
+      attValues[':cr'] = event.origin
     } else if (role === 'photographer') {
       expression.push('#ph=:ph')
+      attNames['#ph'] = 'photographer'
+      attValues[':ph'] = event.origin
     }
 
     const dbParamsContributions = {
@@ -89,22 +105,8 @@ const impl = {
         productId: event.data.id,
       },
       UpdateExpression: expression.join(' '),
-      ExpressionAttributeNames: {
-        '#c': 'created',
-        '#cb': 'createdBy',
-        '#u': 'updated',
-        '#ub': 'updatedBy',
-        '#cr': 'creator',
-        '#ph': 'photographer',
-      },
-      ExpressionAttributeValues: {
-        ':c': updated,
-        ':cb': event.origin,
-        ':u': updated,
-        ':ub': event.origin,
-        ':cr': event.origin,
-        ':ph': event.origin,
-      },
+      ExpressionAttributeNames: attNames,
+      ExpressionAttributeValues: attValues,
       ReturnValues: 'NONE',
       ReturnConsumedCapacity: 'NONE',
       ReturnItemCollectionMetrics: 'NONE',
