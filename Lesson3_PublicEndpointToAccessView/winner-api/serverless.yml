@@ -7,7 +7,7 @@ custom:
 
 provider:
   name: aws
-  deploymentBucket: ${self:custom.private.deploymentBucket} #TODO comment out before check-in
+#  deploymentBucket: ${self:custom.private.deploymentBucket}
   runtime: nodejs4.3
   profile: ${self:custom.private.profile}
   region: ${self:custom.private.region}

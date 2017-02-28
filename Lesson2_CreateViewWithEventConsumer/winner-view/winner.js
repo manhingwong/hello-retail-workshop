@@ -62,10 +62,19 @@ const impl = {
   updateContributionsTable: (role, event, complete) => {
     const updated = Date.now()
 
+    let priorErr
     const updateCallback = (err) => {
-      if (err) {
-        complete(`${constants.METHOD_UPDATE_CONTRIBUTIONS_TABLES} - errors updating DynamoDb for ${role}: ${err}`)
-      } else {
+      if (priorErr === undefined) { // first update result
+        if (err) {
+          priorErr = err
+        } else {
+          priorErr = false
+        }
+      } else if (priorErr && err) { // second update result, if an error was previously received and we have a new one
+        complete(`${constants.METHOD_UPDATE_CONTRIBUTIONS_TABLES} - errors updating DynamoDb: ${[priorErr, err]}`)
+      } else if (priorErr || err) {
+        complete(`${constants.METHOD_UPDATE_CONTRIBUTIONS_TABLES} - error updating DynamoDb: ${priorErr || err}`)
+      } else { // second update result if error was not previously seen
         complete()
       }
     }
@@ -93,10 +102,70 @@ const impl = {
       expression.push('#cr=if_not_exists(#cr,:cr)')
       attNames['#cr'] = 'creator'
       attValues[':cr'] = event.origin
+
+      // TODO would be more efficient to do this once on login than every time, but need to write a login method and
+      // look for a login schema, etc
+      const dbParamsScores = {
+        TableName: constants.TABLE_SCORES_NAME,
+        Key: {
+          userId: event.origin,
+          role: 'creator',
+        },
+        UpdateExpression: [
+          'set',
+          '#c=if_not_exists(#c,:c),',
+          '#cb=if_not_exists(#cb,:cb),',
+          '#sc=if_not_exists(#sc, :num)',
+        ].join(' '),
+        ExpressionAttributeNames: {
+          '#c': 'created',
+          '#cb': 'createdBy',
+          '#sc': 'score',
+        },
+        ExpressionAttributeValues: {
+          ':c': updated,
+          ':cb': event.origin,
+          ':num': 0,
+        },
+        ReturnValues: 'NONE',
+        ReturnConsumedCapacity: 'NONE',
+        ReturnItemCollectionMetrics: 'NONE',
+      }
+      dynamo.update(dbParamsScores, updateCallback)
     } else if (role === 'photographer') {
       expression.push('#ph=:ph')
       attNames['#ph'] = 'photographer'
       attValues[':ph'] = event.origin
+
+      // TODO would be more efficient to do this once on login than every time, but need to write a login method and
+      // look for a login schema, etc
+      const dbParamsScores = {
+        TableName: constants.TABLE_SCORES_NAME,
+        Key: {
+          userId: event.origin,
+          role: 'photographer',
+        },
+        UpdateExpression: [
+          'set',
+          '#c=if_not_exists(#c,:c),',
+          '#cb=if_not_exists(#cb,:cb),',
+          '#sc=if_not_exists(#sc, :num)',
+        ].join(' '),
+        ExpressionAttributeNames: {
+          '#c': 'created',
+          '#cb': 'createdBy',
+          '#sc': 'score',
+        },
+        ExpressionAttributeValues: {
+          ':c': updated,
+          ':cb': event.origin,
+          ':num': 0,
+        },
+        ReturnValues: 'NONE',
+        ReturnConsumedCapacity: 'NONE',
+        ReturnItemCollectionMetrics: 'NONE',
+      }
+      dynamo.update(dbParamsScores, updateCallback)
     }
 
     const dbParamsContributions = {
@@ -175,22 +244,16 @@ const impl = {
             },
             UpdateExpression: [
               'set',
-              '#c=if_not_exists(#c,:c),',
-              '#cb=if_not_exists(#cb,:cb),',
               '#u=:u,',
               '#ub=:ub,',
               '#sc=#sc + :num',
             ].join(' '),
             ExpressionAttributeNames: {
-              '#c': 'created',
-              '#cb': 'createdBy',
               '#u': 'updated',
               '#ub': 'updatedBy',
               '#sc': 'score',
             },
             ExpressionAttributeValues: {
-              ':c': updated,
-              ':cb': event.origin,
               ':u': updated,
               ':ub': event.origin,
               ':num': 1,
@@ -212,22 +275,16 @@ const impl = {
             },
             UpdateExpression: [
               'set',
-              '#c=if_not_exists(#c,:c),',
-              '#cb=if_not_exists(#cb,:cb),',
               '#u=:u,',
               '#ub=:ub,',
               '#sc=#sc + :num',
             ].join(' '),
             ExpressionAttributeNames: {
-              '#c': 'created',
-              '#cb': 'createdBy',
               '#u': 'updated',
               '#ub': 'updatedBy',
               '#sc': 'score',
             },
             ExpressionAttributeValues: {
-              ':c': updated,
-              ':cb': event.origin,
               ':u': updated,
               ':ub': event.origin,
               ':num': 1,
