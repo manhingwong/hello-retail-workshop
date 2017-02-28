@@ -20,7 +20,7 @@ Every workshop participant that registered on the confluence page should have ac
 ####Option 3: Use your own personal AWS account
 This should cost less than $10, just remember to delete all resources when you're done.
 
-###Step 2: serverless deployments require AWS credentials
+###Step 3: serverless deployments require AWS credentials
 
 ####Option 1:
 Go to AWS IAM console --> users --> select your user ID --> security credentials tab
@@ -58,8 +58,9 @@ $ export AWS_ACCESS_KEY_ID=<access-key-id>
 $ export AWS_SECRET_ACCESS_KEY=<secret-access-key>
 $ export AWS_SESSION_TOKEN=<session-token>             # this one is optional
 ```
+###Step 4: serverless deployments require some information you may not want to check in to a public repo.  Fill in the information in private.yml.
 
-###Step 3: install serverless v1.6 node package on your machine.  *For the moment, there are some issues with the latest Serverless package.  See* https://github.com/serverless/serverless/issues/3253.
+###Step 5: install serverless v1.6 node package on your machine.  *For the moment, there are some issues with the latest Serverless package.  See* https://github.com/serverless/serverless/issues/3253.
 
 ####Note: if you are on a VPN and use a proxy, export your proxy to your shell
 ```sh
@@ -73,7 +74,7 @@ Regardless, install the serverless.com deployment framework - this will make it 
 $ npm install -g serverless@1.6.0
 ```
 
-###Step 4: clone the repo on your local machine
+###Step 6: clone the repo on your local machine
 
 Go to https://github.com/Nordstrom/hello-retail-workshop and fork our Repo, then clone it locally.
 
