@@ -53,8 +53,7 @@ const impl = {
   }),
   clientError: (method, schemaId, ajvErrors, event) => impl.response(
     400,
-    `${method} ${constants.INVALID_REQUEST} could not validate request to '${schemaId}' schema. Errors: '${ajvErrors}' found in event: '${JSON.stringify(event)}'`,
-  ),
+    `${method} ${constants.INVALID_REQUEST} could not validate request to '${schemaId}' schema. Errors: '${ajvErrors}' found in event: '${JSON.stringify(event)}'`),
   dynamoError: (method, err) => {
     console.log(err)
     return impl.response(500, `${method} - ${constants.INTEGRATION_ERROR}`)
@@ -71,7 +70,7 @@ const impl = {
   extractor: (item) => {
     const extract = impl.eventSource(item.userId)
     return {
-      userId: `${extract.friendlyName} (${extract.userId})`,
+      userId: `${extract.friendlyName} (${extract.uniqueId})`,
       score: item.score,
     }
   },

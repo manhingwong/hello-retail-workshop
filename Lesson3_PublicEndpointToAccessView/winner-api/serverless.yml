@@ -7,7 +7,7 @@ custom:
 
 provider:
   name: aws
-#  deploymentBucket: ${self:custom.private.deploymentBucket}
+  deploymentBucket: ${self:custom.private.deploymentBucket} #TODO comment out before check-in
   runtime: nodejs4.3
   profile: ${self:custom.private.profile}
   region: ${self:custom.private.region}
@@ -151,3 +151,5 @@ resources:
                       - '/'
                       - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
                         - ${opt:stage}-Scores
+                        - index
+                        - ScoresByRole

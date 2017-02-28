@@ -11,7 +11,7 @@
     "type": "object",
     "properties": {
       "role":        { "type": "string" },
-      "score":         { "type": "string" },
+      "score":         { "type": "number" },
       "userId":  { "type": "string" }
     },
     "required": [

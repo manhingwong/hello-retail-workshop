@@ -61,7 +61,7 @@ resources:
           - AttributeName: role
             AttributeType: S
           - AttributeName: score
-            AttributeType: S
+            AttributeType: N
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
@@ -144,6 +144,7 @@ resources:
                 -  Effect: 'Allow'
                    Action:
                      - 'dynamodb:UpdateItem'
+                     - 'dynamodb:GetItem'
                    Resource:
                     Fn::Join:
                       - '/'
