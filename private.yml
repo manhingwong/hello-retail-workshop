@@ -13,3 +13,4 @@ coreStream:
   accountId: #<Core Retail Stream's Account ID>
   fanoutRoleName: #<Core Retail Stream IAM Role>
   fanoutRoleArn: arn:aws:iam::${self:custom.private.coreStream.accountId}:role/${self:custom.private.coreStream.fanoutRoleName}
+  awslabsRoleArn: arn:aws:iam::${self:custom.private.coreStream.accountId}:role/fanoutRole

@@ -32,6 +32,7 @@ resources:
               Principal:
                 AWS: # role ARNs that are allowed to write to this stream
                   - '${self:custom.private.coreStream.fanoutRoleArn}'
+                  - '${self:custom.private.coreStream.awslabsRoleArn}'
               Action: sts:AssumeRole
         ManagedPolicyArns:
           - ${self:custom.private.teamPolicy}
