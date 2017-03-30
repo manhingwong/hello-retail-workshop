@@ -7,13 +7,30 @@
     "version": "1-0-0"
   },
   "type": "object",
-  "allOf": { "$ref": "retail-stream-schema-ingress.json#" },
   "properties": {
+    "schema":      { "type": "string", "format": "url" },
+    "followsFrom": { "type": "string" },
+    "origin":      { "type": "string" },
+    "timeOrigin":  { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "properties": {
+        "schema": { "type": "string", "format": "url" }
+      },
+      "required": [
+        "schema"
+      ],
+      "additionalProperties": true
+    },
     "eventId": { "type": "string", "format": "" },
     "timeIngest":  { "type": "string", "format": "date-time" },
     "timeProcess": { "type": "string", "format": "date-time" }
   },
   "required": [
+    "schema",
+    "origin",
+    "timeOrigin",
+    "data",
     "eventId",
     "timeIngest",
     "timeProcess"

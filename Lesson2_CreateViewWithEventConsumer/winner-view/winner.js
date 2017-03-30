@@ -173,7 +173,7 @@ const impl = {
    * @param event The purchase event.
    * @param complete The callback to inform of completion, with optional error parameter.
    */
-  updateScoresTable: (data, event, complete) => {
+  updateScoresTable: (id, data, origin, complete) => {
     const updated = Date.now()
 
     let priorErr
@@ -193,9 +193,25 @@ const impl = {
       }
     }
     if (!data || (!data.creator && !data.photographer)) {
-      console.log(`No contributor information for product ${event.data.id}, so no effect on scores.`)
+      console.log(`No contributor information for product ${id}, so no effect on scores.`)
       complete()
     } else {
+      const updateExp = [
+        'set',
+        '#u=:u,',
+        '#ub=:ub,',
+        '#sc=#sc + :num',
+      ].join(' ')
+      const attNames = {
+        '#u': 'updated',
+        '#ub': 'updatedBy',
+        '#sc': 'score',
+      }
+      const attValues = {
+        ':u': updated,
+        ':ub': origin,
+        ':num': 1,
+      }
       if (data.creator) {
         const dbParamsCreator = {
           TableName: constants.TABLE_SCORES_NAME,
@@ -203,22 +219,9 @@ const impl = {
             userId: data.creator,
             role: 'creator',
           },
-          UpdateExpression: [
-            'set',
-            '#u=:u,',
-            '#ub=:ub,',
-            '#sc=#sc + :num',
-          ].join(' '),
-          ExpressionAttributeNames: {
-            '#u': 'updated',
-            '#ub': 'updatedBy',
-            '#sc': 'score',
-          },
-          ExpressionAttributeValues: {
-            ':u': updated,
-            ':ub': event.origin,
-            ':num': 1,
-          },
+          UpdateExpression: updateExp,
+          ExpressionAttributeNames: attNames,
+          ExpressionAttributeValues: attValues,
           ReturnValues: 'NONE',
           ReturnConsumedCapacity: 'NONE',
           ReturnItemCollectionMetrics: 'NONE',
@@ -234,22 +237,9 @@ const impl = {
             userId: data.photographer,
             role: 'photographer',
           },
-          UpdateExpression: [
-            'set',
-            '#u=:u,',
-            '#ub=:ub,',
-            '#sc=#sc + :num',
-          ].join(' '),
-          ExpressionAttributeNames: {
-            '#u': 'updated',
-            '#ub': 'updatedBy',
-            '#sc': 'score',
-          },
-          ExpressionAttributeValues: {
-            ':u': updated,
-            ':ub': event.origin,
-            ':num': 1,
-          },
+          UpdateExpression: updateExp,
+          ExpressionAttributeNames: attNames,
+          ExpressionAttributeValues: attValues,
           ReturnValues: 'NONE',
           ReturnConsumedCapacity: 'NONE',
           ReturnItemCollectionMetrics: 'NONE',
@@ -350,7 +340,7 @@ const impl = {
         console.log(`Event processing has already moved to ${data.Item.lastSequenceNumber} for product ${event.data.id}, so discarding.`)
         complete()
       } else { // !data.Item || !data.Item.lastSequenceNumber || is the latest, then just  and update scores table
-        impl.updateScoresTable(data.Item, event, updateCallback)
+        impl.updateScoresTable(event.data.id, data.Item, event.origin, updateCallback)
         impl.updateSequenceNumber(event.data.id, sequenceNumber, event.origin, updateCallback)
       }
     })

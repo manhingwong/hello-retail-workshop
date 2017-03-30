@@ -19,28 +19,27 @@ functions:
       Fn::GetAtt: [ WinnerReaderWriter, Arn ]
     handler: winner.processKinesisEvent
     environment:
-      STAGE: ${opt:stage}
       TABLE_CONTRIBUTIONS_NAME:
         Ref: Contributions
       TABLE_SCORES_NAME:
         Ref: Scores
     events:
       - stream:
-          arn: '${self:custom.stream}'
+          arn: ${self:custom.stream}
           enabled: true
-          startingPosition: 'TRIM_HORIZON'
+          startingPosition: TRIM_HORIZON
 
 resources:
   Resources:
     # Log Group
     WinnerLogGroup:
-      Type: 'AWS::Logs::LogGroup'
+      Type: AWS::Logs::LogGroup
       Properties:
-        LogGroupName: '/aws/lambda/${self:service}-${opt:stage}-winner'
-        RetentionInDays: 7
+        LogGroupName: /aws/lambda/${self:service}-${opt:stage}-winner
+        RetentionInDays: 3
     # Tables
     Contributions:
-      Type: 'AWS::DynamoDB::Table'
+      Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
           - AttributeName: productId
@@ -53,7 +52,7 @@ resources:
           WriteCapacityUnits: 1
         TableName: ${opt:stage}-Contributions
     Scores:
-      Type: 'AWS::DynamoDB::Table'
+      Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
           - AttributeName: userId
@@ -85,8 +84,8 @@ resources:
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
-    # Winner Roles
-    WinnerReaderWriter: # role for the Winner (Maintaining) Lambda
+    # Winner Role for the lambda to read from Kinesis, to write to Logs, and to read from and write to Dynamo DB
+    WinnerReaderWriter:
       Type: AWS::IAM::Role
       Properties:
         Path: /
@@ -97,12 +96,7 @@ resources:
             - Effect: Allow
               Action: sts:AssumeRole
               Principal:
-                AWS: # role ARNs that are allowed to write to the Winner Tables
-                  - 'arn:aws:iam::${self:custom.private.accountId}:role/${self:custom.private.teamRole}'
-            - Effect: Allow
-              Action: sts:AssumeRole
-              Principal:
-                Service: 'lambda.amazonaws.com'
+                Service: lambda.amazonaws.com
         ManagedPolicyArns:
           - ${self:custom.private.teamPolicy}
         Policies:
@@ -110,7 +104,7 @@ resources:
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
-                - Effect: 'Allow'
+                - Effect: Allow
                   Action:
                     - 'logs:CreateLogStream'
                   Resource:
@@ -118,7 +112,7 @@ resources:
                       - ':'
                       - - Fn::GetAtt: [ WinnerLogGroup, Arn ]
                         - '*'
-                - Effect: 'Allow'
+                - Effect: Allow
                   Action:
                     - 'logs:PutLogEvents'
                   Resource:
@@ -130,7 +124,7 @@ resources:
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
-                - Effect: 'Allow'
+                - Effect: Allow
                   Action:
                     - 'kinesis:GetRecords'
                     - 'kinesis:GetShardIterator'
@@ -141,7 +135,7 @@ resources:
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
-                -  Effect: 'Allow'
+                -  Effect: Allow
                    Action:
                      - 'dynamodb:UpdateItem'
                      - 'dynamodb:GetItem'
@@ -150,7 +144,7 @@ resources:
                       - '/'
                       - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
                         - Ref: Contributions
-                -  Effect: 'Allow'
+                -  Effect: Allow
                    Action:
                      - 'dynamodb:UpdateItem'
                    Resource:
