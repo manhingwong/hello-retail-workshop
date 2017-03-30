@@ -67,23 +67,6 @@ const impl = {
     return impl.response(500, `${method} - ${constants.INTEGRATION_ERROR}`)
   },
   success: items => impl.response(200, JSON.stringify(items)),
-  extractor: (item) => {
-    const extract = impl.eventSource(item.userId)
-    return {
-      userId: `${extract.friendlyName} (${extract.uniqueId})`,
-      score: item.score,
-    }
-  },
-  best: (limit, role, items) => {
-    if (!items || items.length === 0) {
-      return impl.success(`Not one ${role} found to have sold anything.`)
-    }
-    if (limit) {
-      return impl.success(items.splice(0, limit).map(impl.extractor))
-    } else {
-      return impl.success(impl.extractor(items[0]))
-    }
-  },
   /**
    * Determine the source of the event from the origin, which is of format widget/role/uniqueId/friendlyName.
    * @param event The event to validate and process with the appropriate logic
@@ -105,6 +88,26 @@ const impl = {
         uniqueId: 'UNKNOWN',
         friendlyName: 'UNKNOWN',
       }
+    }
+  },
+  extractor: (item) => {
+    const extract = impl.eventSource(item.userId)
+    // displays nothing if shorter than length 5; display at most three characters if longer than length 6
+    // TODO find more coherent PII strategy than this
+    let masked = extract.uniqueId.substring(extract.uniqueId.length - 7, extract.uniqueId.length - 4)
+    if (masked.length > 0) {
+      masked = ` (**...**${masked}****)`
+    }
+    return {
+      userId: `${extract.friendlyName}${masked}`,
+      score: item.score,
+    }
+  },
+  best: (role, items) => {
+    if (!items || items.length === 0) {
+      return impl.success(`Not one ${role} found to have sold anything.`)
+    } else {
+      return impl.success(items.map(impl.extractor))
     }
   },
 }
@@ -147,14 +150,16 @@ const api = {
           ':r': event.queryStringParameters.role,
         },
         ScanIndexForward: false,
+        Limit: event.queryStringParameters.limit ? event.queryStringParameters.limit : 1,
       }
+
       dynamo.query(params, (err, data) => {
         if (err) { // error from dynamo
           callback(null, impl.dynamoError(constants.METHOD_SCORES, err))
         } else if (!ajv.validate(scoreItemsSchemaId, data.Items)) { // bad data in dynamo
           callback(null, impl.securityRisk(constants.METHOD_SCORES, scoreItemsSchemaId, ajv.errorsText()), data.Items) // careful if the data is sensitive
         } else { // valid
-          callback(null, impl.best(event.queryStringParameters.limit, event.queryStringParameters.role, data.Items))
+          callback(null, impl.best(event.queryStringParameters.role, data.Items))
         }
       })
     }

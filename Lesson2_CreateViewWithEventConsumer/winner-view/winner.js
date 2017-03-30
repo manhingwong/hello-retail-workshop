@@ -194,6 +194,7 @@ const impl = {
     }
     if (!data || (!data.creator && !data.photographer)) {
       console.log(`No contributor information for product ${id}, so no effect on scores.`)
+      // TODO could log this to an UNKNOWN contributor for both
       complete()
     } else {
       const updateExp = [
@@ -227,7 +228,7 @@ const impl = {
           ReturnItemCollectionMetrics: 'NONE',
         }
         dynamo.update(dbParamsCreator, updateCallback)
-      } else {
+      } else { // TODO could log this to an UNKNOWN contributor instead
         updateCallback()
       }
       if (data.photographer) {
@@ -245,7 +246,7 @@ const impl = {
           ReturnItemCollectionMetrics: 'NONE',
         }
         dynamo.update(dbParamsPhotographer, updateCallback)
-      } else {
+      } else { // TODO could log this to an UNKNOWN contributor instead
         updateCallback()
       }
     }
