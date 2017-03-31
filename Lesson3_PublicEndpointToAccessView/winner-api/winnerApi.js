@@ -104,7 +104,7 @@ const impl = {
     }
   },
   best: (role, items) => {
-    if (!items || items.length === 0) {
+    if (!items || items.length === 0 || items[0].score === 0) {
       return impl.success(`Not one ${role} found to have sold anything.`)
     } else {
       return impl.success(items.map(impl.extractor))

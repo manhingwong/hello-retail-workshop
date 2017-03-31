@@ -2,7 +2,6 @@
 
 const AJV = require('ajv')
 const aws = require('aws-sdk') // eslint-disable-line import/no-unresolved, import/no-extraneous-dependencies
-const bigInt = require('big-integer')
 
 // TODO Get these from a better place later
 const eventSchema = require('./retail-stream-schema-egress.json')
@@ -255,14 +254,14 @@ const impl = {
    * Log latest purchase of a given product id to the Contributions table, creating the product record, if needed.
    * (This is in case the fanout doesn't connect till the create event has passed.)
    * @param id The product id.
-   * @param sequenceNumber The sequence number from the event that is currently being processed.
+   * @param eventId The event id from the event that is currently being processed.
    * @param origin The generator of the event (for logging the source of the update).
    * @param complete The callback to inform of completion, with optional error parameter.
    */
-  updateSequenceNumber: (id, sequenceNumber, origin, complete) => {
+  updateEventId: (id, eventId, origin, complete) => {
     const updated = Date.now()
 
-    // Record latest sequence number
+    // Record latest event id
     const expression = [
       'set',
       '#c=if_not_exists(#c,:c),',
@@ -276,14 +275,14 @@ const impl = {
       '#cb': 'createdBy',
       '#u': 'updated',
       '#ub': 'updatedBy',
-      '#ag': 'lastSequenceNumber',
+      '#ag': 'lastEventId',
     }
     const attValues = {
       ':c': updated,
       ':cb': origin,
       ':u': updated,
       ':ub': origin,
-      ':ag': sequenceNumber,
+      ':ag': eventId,
     }
 
     const dbParamsContributions = {
@@ -317,10 +316,6 @@ const impl = {
         complete()
       }
     }
-
-    const sequenceNumber = event.eventId.split(':')[1]
-    console.log('event seq number', sequenceNumber) // TODO remove
-    console.log('verify for product id', event.data.id) // TODO remove
     const dbParamsContributions = {
       Key: {
         productId: event.data.id,
@@ -329,7 +324,7 @@ const impl = {
       AttributesToGet: [
         'creator',
         'photographer',
-        'lastSequenceNumber',
+        'lastEventId',
       ],
       ConsistentRead: false,
       ReturnConsumedCapacity: 'NONE',
@@ -337,12 +332,12 @@ const impl = {
     dynamo.get(dbParamsContributions, (err, data) => {
       if (err) {
         complete(`${constants.METHOD_VERIFY_NEW_PURCHASE} - errors getting product ${event.data.id} from DynamoDb table ${constants.TABLE_CONTRIBUTIONS_NAME}: ${err}`)
-      } else if (data.Item && data.Item.lastSequenceNumber && bigInt(data.Item.lastSequenceNumber).compare(bigInt(sequenceNumber)) >= 0) {
-        console.log(`Event processing has already moved to ${data.Item.lastSequenceNumber} for product ${event.data.id}, so discarding.`)
+      } else if (data.Item && data.Item.lastEventId && data.Item.lastEventId >= event.eventId) {
+        console.log(`Event processing has already moved to ${data.Item.lastEventId} for product ${event.data.id}, so discarding.`)
         complete()
-      } else { // !data.Item || !data.Item.lastSequenceNumber || is the latest, then just  and update scores table
+      } else { // !data.Item || !data.Item.lastEventId || is the latest, then just  and update scores table
         impl.updateScoresTable(event.data.id, data.Item, event.origin, updateCallback)
-        impl.updateSequenceNumber(event.data.id, sequenceNumber, event.origin, updateCallback)
+        impl.updateEventId(event.data.id, event.eventId, event.origin, updateCallback)
       }
     })
   },

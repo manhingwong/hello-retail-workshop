@@ -13,7 +13,6 @@
   },
   "homepage": "https://github.com/Nordstrom/hello-retail/product-catalog#readme",
   "dependencies": {
-    "ajv": "^4.10.4",
-    "big-integer": "^1.6.17"
+    "ajv": "^4.10.4"
   }
 }
