@@ -20,7 +20,7 @@ $ serverless deploy serverless.yml -s <your stage name>
 ```
 ###Step 5: confirm that the lambda function is deployed
 Look in the AWS console under Lambda - look for the winner lambda
-Look in the AWS console under DynaoDB - look for contributions and scores tables
+Look in the AWS console under DynamoDB - look for contributions and scores tables
 
 ###Step 6: Confirm that the Lambda function ran and the tables populated
 Check your contributions and scores dynamo tables and look for the data to be populated there.

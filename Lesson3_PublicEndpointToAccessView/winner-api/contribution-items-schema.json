@@ -12,7 +12,8 @@
     "properties": {
       "productId":   { "type": "string" },
       "creator":   { "type": "string" },
-      "photographer":   { "type": "string" }
+      "photographer":   { "type": "string" },
+      "lastSequenceNumber":   { "type": "string" }
     },
     "required": [
       "productId"
