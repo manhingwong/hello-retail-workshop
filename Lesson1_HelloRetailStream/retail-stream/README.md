@@ -21,7 +21,7 @@ Reference:
 5. <a href='#Example Egress Object Template'>Example Egress Object Template</a>  
 6. <a href='#Example Egress Object'>Example Egress Object</a>  
 
-###Example Ingress Object Template
+### Example Ingress Object Template
 This is a template of the event format producers/publishers to the stream must provide.  
 For details, please see the <a href='retail-stream-ingress.json'>Ingress Schema</a>.
 
@@ -55,7 +55,7 @@ For details, please see the <a href='retail-stream-ingress.json'>Ingress Schema<
 // unique ID of the actual merchant (e.g. with UUID '12345678-1234-4123-a123-123456789012')
 ```
 
-###Example Ingress Object
+### Example Ingress Object
 ```
 {
   schema:      "com.company/retail-stream/1-0-0",
@@ -69,7 +69,7 @@ For details, please see the <a href='retail-stream-ingress.json'>Ingress Schema<
 }
 ```
 
-###Example Egress Object Template
+### Example Egress Object Template
 This is a template of the event format consumers/processors of the stream will receive.
 For details, please see the <a href='retail-stream-egress.json'>Egress Schema</a>.
 
@@ -89,7 +89,7 @@ For details, please see the <a href='retail-stream-egress.json'>Egress Schema</a
 }
 ```
 
-###Example Egress Object
+### Example Egress Object
 ```
 {
   schema:       "com.company/retail-stream/1-0-0",
