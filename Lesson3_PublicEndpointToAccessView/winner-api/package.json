@@ -1,17 +1,14 @@
 {
-  "name": "hello-retail-product-catalog-api",
+  "name": "hello-retail-workshop-winner-api",
   "version": "0.0.1",
-  "description": "An API to obtain product and category information from the Product Catalog",
+  "description": "An API to obtain winner information from the scores and contributions tables",
   "main": "winnerApi.js",
-  "scripts": {
-    "test": "echo \"Error: tests executed by root hello-retail package.json\" && exit 1"
-  },
   "author": "Nordstrom",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/Nordstrom/hello-retail/issues"
+    "url": "https://github.com/Nordstrom/hello-retail-workshop/issues"
   },
-  "homepage": "https://github.com/Nordstrom/hello-retail/product-catalog#readme",
+  "homepage": "https://github.com/Nordstrom/hello-retail-workshop/Lesson3_PublicEndpointToAccessView#readme",
   "dependencies": {
     "ajv": "^4.10.4"
   }

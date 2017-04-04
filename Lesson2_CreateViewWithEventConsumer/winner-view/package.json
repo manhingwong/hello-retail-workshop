@@ -1,17 +1,14 @@
 {
-  "name": "hello-retail-product-catalog-builder",
+  "name": "hello-retail-workshop-winner-view",
   "version": "0.0.1",
-  "description": "A stream processor that accumulates a catalog of our latest best knowledge regarding each product",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: tests executed by root hello-retail package.json\" && exit 1"
-  },
+  "description": "A stream processor that accumulates our latest best knowledge regarding each product, as it relates to calculating the winners.",
+  "main": "winner.js",
   "author": "Nordstrom",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/Nordstrom/hello-retail/issues"
+    "url": "https://github.com/Nordstrom/hello-retail-workshop/issues"
   },
-  "homepage": "https://github.com/Nordstrom/hello-retail/product-catalog#readme",
+  "homepage": "https://github.com/Nordstrom/hello-retail-workshop/Lesson2_CreateViewWithEventConsumer#readme",
   "dependencies": {
     "ajv": "^4.10.4"
   }
