@@ -22,6 +22,9 @@ Serverless architectures offer incredible promise to reduce code complexity, ope
 
 In this diagram we see a lambda consuming from the stream and populating two DynamoDB tables.  The first keeps track of which merchants and photographers are associated with which products.  The second table maintains a tally of sales per merchant and sales per photographer.  The web service that is exposed through API Gateway invokes a lambda that reads from this aggregated view.
 
+## A broader view
+![Serverless all the things!](Images/hello-retail-architecture.png)
+
 ## What does all of this cost?
 * AWS Lambda charges based on both the number of invocations and the duration of each function. For simple functions like these, assume about $.20 per million invocations.
 * AWS API Gateway is about $3.50 per million calls.
