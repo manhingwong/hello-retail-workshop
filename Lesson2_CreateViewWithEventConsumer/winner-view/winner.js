@@ -379,6 +379,8 @@ const impl = {
   },
 }
 
+// TODO separate out kinesis-consuming code into a module
+
 module.exports = {
   /**
    * Example Kinesis Event:
@@ -429,7 +431,7 @@ module.exports = {
         kinesisEvent &&
         kinesisEvent.Records &&
         Array.isArray(kinesisEvent.Records)
-      ) {
+      ) {// TODO convert this to handle events synchronously (to utilize the sequential ordering within the batch)
         let successes = 0
         const complete = (err) => {
           if (err) {
@@ -460,9 +462,15 @@ module.exports = {
             record.kinesis &&
             record.kinesis.data
           ) {
-            const payload = new Buffer(record.kinesis.data, 'base64').toString('ascii')
-            console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - payload: ${payload}`)
-            impl.processEvent(JSON.parse(payload), complete)
+            try {
+              const payload = new Buffer(record.kinesis.data, 'base64').toString('ascii')
+              console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - payload: ${payload}`)
+              impl.processEvent(JSON.parse(payload), complete)
+            } catch (ex) {
+              complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} failed to decode and parse the data - "${ex.stack}".`)
+            }
+          } else {
+            complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} record missing kinesis data.`)
           }
         }
       } else {
