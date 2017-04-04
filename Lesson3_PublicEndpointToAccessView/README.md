@@ -29,7 +29,10 @@ The limit query parameter is optional.  The default is one result when limit is 
 ```sh
 /contributions
 ```
-The contributions request returns the product ids that have contributions.
+The contributions request returns the product ids that have contributions.  As an exercise, alter the winnerApi.js code to also return the lastSequenceNumber as well as the productId, then re-deploy.
+```sh
+$ serverless deploy function -f contributions -s <your stage name>
+```
 
 Note that this gateway can scale massively.  To handle a lot more traffic (thousands of TPS) you'd want to ensure that your available AWS account limits could handle the traffic and increase the read IOPs on the dynamoDB table.
 

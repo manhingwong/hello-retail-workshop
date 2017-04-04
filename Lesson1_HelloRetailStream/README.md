@@ -25,7 +25,7 @@ If you're curious about the fan-out Lambda we're using to write to everyone's st
 ```sh
 $ ./fanout deploy
 ```
-The default lambda name will be fanout (same as using the option --function fanout).
+The default lambda name will be fanout (same as using the option --function fanout).  You can also deploy changes to the fanout lambda using this command.
 
 ###Step B: Register all source-to-target mappings.  Source is the hello-retail stream (Core Stream), in our use case, and target is your local copy of the hello-retail stream.  As an example of registering one kinesis stream to another kinesis stream:
 ```sh
@@ -41,4 +41,4 @@ The id does not have to be your stage, but does need to be something unique amon
 ```sh
 ./fanout hook --source-arn arn:aws:kinesis:<CoreStreamAWSRegion>:<CoreStreamAWSAccountNumber>:stream/<CoreStreamName> --starting-position TRIM_HORIZON
 ```
-It may take twenty minutes before the initial set of records are delivered and the local stream is truly streaming.
+It may take ten minutes before the initial set of records are delivered and the local stream is truly streaming.  The local stream will get only the events that the fanout has processed since the registration was activated for the local stream.  To get the full stream, hook the kinesis stream to the fanout after all local streams have been registered and activated.

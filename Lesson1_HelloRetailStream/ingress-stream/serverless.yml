@@ -16,11 +16,12 @@ resources:
   Resources:
     # Stream
     Stream:
-      Type: 'AWS::Kinesis::Stream'
+      Type: AWS::Kinesis::Stream
       Properties:
         Name: ${opt:stage}Stream
         ShardCount: 3
-    StreamWriter: # role for producers
+    # Role for writers to the stream
+    StreamWriter:
       Type: AWS::IAM::Role
       Properties:
         Path: /
@@ -31,8 +32,7 @@ resources:
             - Effect: Allow
               Principal:
                 AWS: # role ARNs that are allowed to write to this stream
-                  - '${self:custom.private.coreStream.fanoutRoleArn}'
-                  - '${self:custom.private.coreStream.awslabsRoleArn}'
+                  - ${self:custom.private.coreStream.awslabsRoleArn}
               Action: sts:AssumeRole
         ManagedPolicyArns:
           - ${self:custom.private.teamPolicy}

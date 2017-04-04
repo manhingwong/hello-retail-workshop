@@ -5,9 +5,9 @@ As items are created and photographed, the contributions table will be updated. 
 ###Step 1: In your cloned repo, go to the winner-view directory
 
 ###Step 2: View the serverless.yml you find there.
-This yml file is used by the serverless.com deployment framework to deploy resources, services, and code to AWS.  You can see that there is a lambda function, two dynamodb tables, and a larger set of roles and policies that are deployed here.  The serverless framework uses this yaml file to generate and execute cloudformation templates.
+This yml file is used by the serverless.com deployment framework to deploy resources, services, and code to AWS.  You can see that there is a lambda function, two dynamodb tables, and a role with a set of policies that are deployed here.  The serverless framework uses this yaml file to generate and execute cloudformation templates.
 
-Notice that the winner lambda has its event trigger as the stream and its starting point is the trim horizon - that means when its deployed, it will read all events from the beginning of the log, one micro-batch at a time.  The micro-batch size is determined in the serverless.yml by batchSize - this ensures that when the stream is backed-up, each lambda will process a reasonablenumber of events.
+Notice that the winner lambda has its event trigger as the stream and its starting point is the trim horizon - that means when its deployed, it will read all events from the beginning of the log, one micro-batch at a time.  The micro-batch size is determined in the serverless.yml by batchSize - this ensures that when the stream is backed-up, each lambda will process a reasonable number of events.
 
 ###Step 3: View the lambda code (winner.js)
 Here you can see that the lambda is parsing events and updating the contributions and scores dynamoDB tables as appropriate.  The majority of the code here is schema and input validation.
@@ -20,7 +20,7 @@ $ serverless deploy serverless.yml -s <your stage name>
 ```
 ###Step 5: confirm that the lambda function is deployed
 Look in the AWS console under Lambda - look for the winner lambda
-Look in the AWS console under DynaoDB - look for contributions and scores tables
+Look in the AWS console under DynamoDB - look for contributions and scores tables
 
 ###Step 6: Confirm that the Lambda function ran and the tables populated
 Check your contributions and scores dynamo tables and look for the data to be populated there.

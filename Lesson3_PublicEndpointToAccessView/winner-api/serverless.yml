@@ -18,7 +18,6 @@ functions:
       Fn::GetAtt: [ WinnerApiContributionsReader, Arn ]
     handler: winnerApi.contributions
     environment:
-      STAGE: ${opt:stage}
       TABLE_CONTRIBUTIONS_NAME: ${opt:stage}-Contributions
     events:
       - http:
@@ -30,7 +29,6 @@ functions:
       Fn::GetAtt: [ WinnerApiScoresReader, Arn ]
     handler: winnerApi.scores
     environment:
-      STAGE: ${opt:stage}
       TABLE_SCORES_NAME: ${opt:stage}-Scores
     events:
       - http:
@@ -42,15 +40,15 @@ resources:
   Resources:
     # Log Group
     ContributionsLogGroup:
-      Type: 'AWS::Logs::LogGroup'
+      Type: AWS::Logs::LogGroup
       Properties:
-        LogGroupName: '/aws/lambda/${self:service}-${opt:stage}-contributions'
-        RetentionInDays: 7
+        LogGroupName: /aws/lambda/${self:service}-${opt:stage}-contributions
+        RetentionInDays: 3
     ScoresLogGroup:
-      Type: 'AWS::Logs::LogGroup'
+      Type: AWS::Logs::LogGroup
       Properties:
-        LogGroupName: '/aws/lambda/${self:service}-${opt:stage}-scores'
-        RetentionInDays: 7
+        LogGroupName: /aws/lambda/${self:service}-${opt:stage}-scores
+        RetentionInDays: 3
     # Winner Tables Roles
     WinnerApiContributionsReader: # role for Contributions Lambda
       Type: AWS::IAM::Role
@@ -63,12 +61,7 @@ resources:
             - Effect: Allow
               Action: sts:AssumeRole
               Principal:
-                AWS: # role ARNs that are allowed to read from the Contributions Table
-                  - 'arn:aws:iam::${self:custom.private.accountId}:role/${self:custom.private.teamRole}'
-            - Effect: Allow
-              Action: sts:AssumeRole
-              Principal:
-                Service: 'lambda.amazonaws.com'
+                Service: lambda.amazonaws.com
         ManagedPolicyArns:
           - ${self:custom.private.teamPolicy}
         Policies:
@@ -76,13 +69,9 @@ resources:
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
-                - Effect: 'Allow'
+                - Effect: Allow
                   Action:
                     - 'logs:CreateLogStream'
-                  Resource:
-                    Fn::GetAtt: [ ContributionsLogGroup, Arn ]
-                - Effect: 'Allow'
-                  Action:
                     - 'logs:PutLogEvents'
                   Resource:
                     Fn::Join:
@@ -93,7 +82,7 @@ resources:
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
-                -  Effect: 'Allow'
+                -  Effect: Allow
                    Action:
                      - 'dynamodb:Scan'
                    Resource:
@@ -112,12 +101,7 @@ resources:
             - Effect: Allow
               Action: sts:AssumeRole
               Principal:
-                AWS: # role ARNs that are allowed to read from the Scores Table
-                  - 'arn:aws:iam::${self:custom.private.accountId}:role/${self:custom.private.teamRole}'
-            - Effect: Allow
-              Action: sts:AssumeRole
-              Principal:
-                Service: 'lambda.amazonaws.com'
+                Service: lambda.amazonaws.com
         ManagedPolicyArns:
           - ${self:custom.private.teamPolicy}
         Policies:
@@ -125,13 +109,9 @@ resources:
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
-                - Effect: 'Allow'
+                - Effect: Allow
                   Action:
                     - 'logs:CreateLogStream'
-                  Resource:
-                    Fn::GetAtt: [ ScoresLogGroup, Arn ]
-                - Effect: 'Allow'
-                  Action:
                     - 'logs:PutLogEvents'
                   Resource:
                     Fn::Join:
@@ -142,9 +122,8 @@ resources:
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
-                -  Effect: 'Allow'
+                -  Effect: Allow
                    Action:
-                   #  - 'dynamodb:GetItem'
                      - 'dynamodb:Query'
                    Resource:
                     Fn::Join:
