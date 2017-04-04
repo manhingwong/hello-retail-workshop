@@ -32,9 +32,9 @@ In this diagram we see a lambda consuming from the stream and populating two Dyn
 So, if we had 10,000,000 events a day (~200 events per second peak) and 1,000 reads from the web service, we'd expect about $2 in Lambda, $.0035 in API Gateway, and $10 a day in DynamoDB.
 
 ## Kudos!
-* Huge props and all credit for the hello-retail code is due to Erik Erikson and Greg Smith, our senior developers behind all of this code.
-* Our amazing new developer Lauren Wang created all of the code for this workshop... in two weeks!
+* Huge props and all credit for the hello-retail code is due to Erik Erikson, Greg Smith, and Lauren Wang - the developers behind all of this code.
 * Clearly, special thanks are due to Austen Collins and the rest of the crew at Serverless, Inc. who gave us the Serverless Framework, sparked our imaginations, and saved us a lot of pain.  Being in production with serverless architecture and staying sane requires a deployment framework, our pick is the Serverless.com Framework.
+* Finally, thanks to all the good people at AWS losing sleep so we don't have to. ;)
 
 ## We humbly request your thoughts and feedback
 All feedback is welcomed - so don't be shy!
