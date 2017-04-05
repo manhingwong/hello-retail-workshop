@@ -19,3 +19,9 @@ Can you create a view that maintains a sorted count of "people who viewed this p
 
 #### Cost and latency improvements
 If you had 100,000,000 page views a day, how much would your service cost?  How could you make it more efficient?  How can you trade off pre-computing results into a table vs computing the results on demand from a raw activity table?  What are the performance implications?
+
+#### Cheat detector!
+Did anyone enter more than 3 products as merchant?  Did anyone buy lots of their own product?
+
+
+
