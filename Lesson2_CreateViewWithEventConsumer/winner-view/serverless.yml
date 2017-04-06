@@ -41,6 +41,7 @@ resources:
         RetentionInDays: 3
     # Tables
     Contributions:
+      # Info about which creator and photographer are associated with each product and on what eventId they registered
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
@@ -54,6 +55,7 @@ resources:
           WriteCapacityUnits: 1
         TableName: ${opt:stage}-Contributions
     Scores:
+      # Number of purchases in which the given contributor was the stated role (creator or photographer) for the product purchased
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
@@ -87,6 +89,7 @@ resources:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
     Events:
+      # Log of all purchase events and attribution of each event to the creator and photographer involved, if any known
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:

@@ -60,7 +60,7 @@ $ export AWS_SESSION_TOKEN=<session-token>             # this one is optional
 ```
 ### Step 4: serverless deployments require some information you may not want to check in to a public repo.  Fill in the information in private.yml.
 
-### Step 5: install serverless v1.6 node package on your machine.  *For the moment, there are some issues with the latest Serverless package.  See* https://github.com/serverless/serverless/issues/3253.
+### Step 5: install serverless node package on your machine.
 
 #### Note: if you are on a VPN and use a proxy, export your proxy to your shell
 ```sh
@@ -71,7 +71,7 @@ Regardless, install the serverless.com deployment framework - this will make it 
 ```sh
 # $ sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share}
 # Uncomment the above if you have corrupted your file system and are on MacOSX.
-$ npm install -g serverless@1.6.0
+$ npm install -g serverless
 ```
 
 ### Step 6: clone the repo on your local machine

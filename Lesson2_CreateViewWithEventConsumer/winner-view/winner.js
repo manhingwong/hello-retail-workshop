@@ -70,53 +70,15 @@ const impl = {
   registerContributor: (role, event, complete) => {
     const updated = Date.now()
 
-    let priorErr
     const updateCallback = (err) => {
-      if (priorErr === undefined) { // first update result
-        if (err) {
-          priorErr = err
-        } else {
-          priorErr = false
-        }
-      } else if (priorErr && err) { // second update result, if an error was previously received and we have a new one
-        complete(`${constants.METHOD_REGISTER_CONTRIBUTOR} - errors updating DynamoDb: ${[priorErr, err]}`)
-      } else if (priorErr || err) {
-        complete(`${constants.METHOD_REGISTER_CONTRIBUTOR} - error updating DynamoDb: ${priorErr || err}`)
-      } else { // second update result if error was not previously seen
+      if (err) {
+        complete(`${constants.METHOD_REGISTER_CONTRIBUTOR} - errors updating DynamoDb: ${err}`)
+      } else {
         const roleInfo = {}
         roleInfo[role] = event.origin
         impl.getEventsThenCredit(event.data.id, event.eventId, event.origin, roleInfo, complete)
       }
     }
-
-    // Record name and role in Scores table for this contributor
-    const dbParamsScores = {
-      TableName: constants.TABLE_SCORES_NAME,
-      Key: {
-        userId: event.origin,
-        role,
-      },
-      UpdateExpression: [
-        'set',
-        '#c=if_not_exists(#c,:c),',
-        '#cb=if_not_exists(#cb,:cb),',
-        '#sc=if_not_exists(#sc, :num)',
-      ].join(' '),
-      ExpressionAttributeNames: {
-        '#c': 'created',
-        '#cb': 'createdBy',
-        '#sc': 'score',
-      },
-      ExpressionAttributeValues: {
-        ':c': updated,
-        ':cb': event.origin,
-        ':num': 0,
-      },
-      ReturnValues: 'NONE',
-      ReturnConsumedCapacity: 'NONE',
-      ReturnItemCollectionMetrics: 'NONE',
-    }
-    dynamo.update(dbParamsScores, updateCallback)
 
     // Record product's contributor registration
     const expression = [
@@ -158,6 +120,41 @@ const impl = {
       ReturnItemCollectionMetrics: 'NONE',
     }
     dynamo.update(dbParamsContributions, updateCallback)
+  },
+  /**
+   * Get events from the Events table that will need to have the contributor attached to them.
+   * @param id The product id
+   * @param origin Who/what triggered this update
+   * @param roleInfo Who was the hotographer or creator for this product
+   * @param baseline The eventId that first registered the contributor, so credit is only applied subsequently.
+   * @param complete The callback to inform of completion, with optional error parameter.
+   */
+  getEventsThenCredit: (id, baseline, origin, roleInfo, complete) => {
+    const params = {
+      TableName: constants.TABLE_EVENTS_NAME,
+      ProjectionExpression: '#e',
+      KeyConditionExpression: '#i = :i AND #e > :e',
+      ExpressionAttributeNames: {
+        '#i': 'productId',
+        '#e': 'eventId',
+      },
+      ExpressionAttributeValues: {
+        ':i': id,
+        ':e': baseline,
+      },
+    }
+
+    dynamo.query(params, (err, data) => {
+      if (err) {
+        complete(`${constants.METHOD_GET_EVENTS_THEN_CREDIT} - errors updating DynamoDb: ${err}`)
+      } else if (!data || !data.Items) {
+        console.log(`Found no prior events for ${id} before ${baseline}.`) // TODO remove
+        complete()
+      } else {
+        console.log('Found prior events ', data.Items) // TODO remove
+        impl.creditContributions(id, data.Items.map(item => item.eventId), origin, roleInfo, complete)
+      }
+    })
   },
   /**
    * Assign credit to a product-event pair in the Events table, either because of a purchase event or to true up any
@@ -423,41 +420,6 @@ const impl = {
     })
   },
   /**
-   * Get events from the Events table that will need to have the contributor attached to them.
-   * @param id The product id
-   * @param origin Who/what triggered this update
-   * @param roleInfo Who was the hotographer or creator for this product
-   * @param baseline The eventId that first registered the contributor, so credit is only applied subsequently.
-   * @param complete The callback to inform of completion, with optional error parameter.
-   */
-  getEventsThenCredit: (id, baseline, origin, roleInfo, complete) => {
-    const params = {
-      TableName: constants.TABLE_EVENTS_NAME,
-      ProjectionExpression: '#e',
-      KeyConditionExpression: '#i = :i AND #e > :e',
-      ExpressionAttributeNames: {
-        '#i': 'productId',
-        '#e': 'eventId',
-      },
-      ExpressionAttributeValues: {
-        ':i': id,
-        ':e': baseline,
-      },
-    }
-
-    dynamo.query(params, (err, data) => {
-      if (err) {
-        complete(`${constants.METHOD_GET_EVENTS_THEN_CREDIT} - errors updating DynamoDb: ${err}`)
-      } else if (!data || !data.Items) {
-        console.log(`Found no prior events for ${id} before ${baseline}.`) // TODO remove
-        complete()
-      } else {
-        console.log('Found prior events ', data.Items) // TODO remove
-        impl.creditContributions(id, data.Items.map(item => item.eventId), origin, roleInfo, complete)
-      }
-    })
-  },
-  /**
    * Process the given event, reporting failure or success to the given callback
    * @param event The event to validate and process with the appropriate logic
    * @param complete The callback with which to report any errors
@@ -471,19 +433,19 @@ const impl = {
       complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${eventSchemaId}' schema.  Errors: ${ajv.errorsText()}`)
     } else if (event.data.schema === productCreateSchemaId) {
       if (!ajv.validate(productCreateSchemaId, event.data)) {
-        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productCreateSchema}' schema. Errors: ${ajv.errorsText()}`)
+        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productCreateSchemaId}' schema. Errors: ${ajv.errorsText()}`)
       } else {
         impl.registerContributor('creator', event, complete)
       }
     } else if (event.data.schema === productImageSchemaId) {
       if (!ajv.validate(productImageSchemaId, event.data)) {
-        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productImageSchema}' schema. Errors: ${ajv.errorsText()}`)
+        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productImageSchemaId}' schema. Errors: ${ajv.errorsText()}`)
       } else {
         impl.registerContributor('photographer', event, complete)
       }
     } else if (event.data.schema === productPurchaseSchemaId) {
       if (!ajv.validate(productPurchaseSchemaId, event.data)) {
-        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productPurchaseSchema}' schema. Errors: ${ajv.errorsText()}`)
+        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productPurchaseSchemaId}' schema. Errors: ${ajv.errorsText()}`)
       } else {
         impl.updatePurchaseEvent(event, complete)
       }
@@ -569,7 +531,7 @@ module.exports = {
           }
           if (successes === kinesisEvent.Records.length) {
             console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - all ${kinesisEvent.Records.length} events processed successfully.`)
-            callback(null, true)
+            callback()
           }
         }
         for (let i = 0; i < kinesisEvent.Records.length; i++) {
