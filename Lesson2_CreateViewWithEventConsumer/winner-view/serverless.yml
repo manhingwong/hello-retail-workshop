@@ -23,6 +23,8 @@ functions:
         Ref: Contributions
       TABLE_SCORES_NAME:
         Ref: Scores
+      TABLE_EVENTS_NAME:
+        Ref: Events
     events:
       - stream:
           arn: ${self:custom.stream}
@@ -81,6 +83,46 @@ resources:
               ProjectionType: INCLUDE
               NonKeyAttributes:
                 - userId
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+    Events:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: productId
+            AttributeType: S
+          - AttributeName: eventId
+            AttributeType: S
+          - AttributeName: creator
+            AttributeType: S
+          - AttributeName: photographer
+            AttributeType: S
+        KeySchema:
+          - AttributeName: productId
+            KeyType: HASH
+          - AttributeName: eventId
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${opt:stage}-Events
+        GlobalSecondaryIndexes:
+          - IndexName: EventsByCreator
+            KeySchema:
+              - AttributeName: creator
+                KeyType: HASH
+            Projection:
+              ProjectionType: KEYS_ONLY
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: EventsByPhotographer
+            KeySchema:
+              - AttributeName: photographer
+                KeyType: HASH
+            Projection:
+              ProjectionType: KEYS_ONLY
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
@@ -152,3 +194,32 @@ resources:
                       - '/'
                       - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
                         - Ref: Scores
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:UpdateItem'
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - Ref: Events
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Events
+                        - index
+                        - EventsByCreator
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Events
+                        - index
+                        - EventsByPhotographer
