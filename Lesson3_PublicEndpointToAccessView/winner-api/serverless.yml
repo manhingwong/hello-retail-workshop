@@ -1,0 +1,134 @@
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+service: winner-api
+
+custom:
+  private: ${file(../../private.yml)}
+
+provider:
+  name: aws
+#  deploymentBucket: ${self:custom.private.deploymentBucket}
+  runtime: nodejs4.3
+  profile: ${self:custom.private.profile}
+  region: ${self:custom.private.region}
+
+functions:
+  contributions:
+    role:
+      Fn::GetAtt: [ WinnerApiContributionsReader, Arn ]
+    handler: winnerApi.contributions
+    environment:
+      TABLE_CONTRIBUTIONS_NAME: ${opt:stage}-Contributions
+    events:
+      - http:
+          path: contributions
+          method: get
+          cors: true
+  scores:
+    role:
+      Fn::GetAtt: [ WinnerApiScoresReader, Arn ]
+    handler: winnerApi.scores
+    environment:
+      TABLE_SCORES_NAME: ${opt:stage}-Scores
+    events:
+      - http:
+          path: scores
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    # Log Group
+    ContributionsLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/${self:service}-${opt:stage}-contributions
+        RetentionInDays: 3
+    ScoresLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/${self:service}-${opt:stage}-scores
+        RetentionInDays: 3
+    # Winner Tables Roles
+    WinnerApiContributionsReader: # role for Contributions Lambda
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${opt:stage}WinnerApiContributionsReader
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                Service: lambda.amazonaws.com
+        ManagedPolicyArns:
+          - ${self:custom.private.teamPolicy}
+        Policies:
+          - PolicyName: CreateAndWriteToLogStream
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'logs:CreateLogStream'
+                    - 'logs:PutLogEvents'
+                  Resource:
+                    Fn::Join:
+                      - ':'
+                      - - Fn::GetAtt: [ ContributionsLogGroup, Arn ]
+                        - '*'
+          - PolicyName: ReadFromContributions
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:Scan'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Contributions
+    WinnerApiScoresReader: # role for Scores Lambda
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${opt:stage}WinnerApiScoresReader
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                Service: lambda.amazonaws.com
+        ManagedPolicyArns:
+          - ${self:custom.private.teamPolicy}
+        Policies:
+          - PolicyName: CreateAndWriteToLogStream
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'logs:CreateLogStream'
+                    - 'logs:PutLogEvents'
+                  Resource:
+                    Fn::Join:
+                      - ':'
+                      - - Fn::GetAtt: [ ScoresLogGroup, Arn ]
+                        - '*'
+          - PolicyName: ReadFromScores
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Scores
+                        - index
+                        - ScoresByRole

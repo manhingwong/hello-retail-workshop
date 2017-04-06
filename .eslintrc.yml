@@ -1,0 +1,17 @@
+root: true
+extends: airbnb
+rules:
+  max-len: off
+  no-console: off
+  no-else-return: off
+  no-plusplus: off
+  no-unexpected-multiline: error
+  semi:
+    - error
+    - never
+  strict: off # doesn't work in node v4
+plugins:
+  - import
+env:
+  es6: true
+  node: true
