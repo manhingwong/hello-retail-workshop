@@ -125,7 +125,7 @@ const impl = {
       '#cb=if_not_exists(#cb,:cb),',
       '#u=:u,',
       '#ub=:ub,',
-      '#ro=if_not_exists(#ro,:ro)',
+      '#ro=if_not_exists(#ro,:ro),',
       '#ev=if_not_exists(#ev,:ev)',
     ]
     const attNames = {
@@ -183,7 +183,7 @@ const impl = {
       '#c=if_not_exists(#c,:c),',
       '#cb=if_not_exists(#cb,:cb),',
       '#u=:u,',
-      '#ub=:ub,',
+      '#ub=:ub',
     ]
     const attNames = {
       '#c': 'created',
@@ -200,12 +200,12 @@ const impl = {
 
     if (roleInfo) {
       if (roleInfo.creator) {
-        expression.push('#cr=:cr,')
+        expression.push(', #cr=:cr')
         attNames['#cr'] = 'creator'
         attValues[':cr'] = roleInfo.creator
       }
       if (roleInfo.photographer) {
-        expression.push('#ph=:ph,')
+        expression.push(', #ph=:ph')
         attNames['#ph'] = 'photographer'
         attValues[':ph'] = roleInfo.photographer
       }
