@@ -1,0 +1,201 @@
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+service: winner-view
+
+custom:
+  private: ${file(../../private.yml)}
+  stream: 'arn:aws:kinesis:${self:custom.private.region}:${self:custom.private.accountId}:stream/${opt:stage}Stream'
+
+provider:
+  name: aws
+#  deploymentBucket: ${self:custom.private.deploymentBucket}
+  runtime: nodejs4.3
+  profile: ${self:custom.private.profile}
+  region: ${self:custom.private.region}
+
+functions:
+  winner:
+    role:
+      Fn::GetAtt: [ WinnerReaderWriter, Arn ]
+    handler: winner.processKinesisEvent
+    environment:
+      TABLE_CONTRIBUTIONS_NAME:
+        Ref: Contributions
+      TABLE_SCORES_NAME:
+        Ref: Scores
+    events:
+      - stream:
+          arn: ${self:custom.stream}
+          enabled: true
+          startingPosition: TRIM_HORIZON
+
+resources:
+  Resources:
+    # Log Group
+    WinnerLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/${self:service}-${opt:stage}-winner
+        RetentionInDays: 3
+    # Tables
+    Contributions:
+      # Info about which creator and photographer are associated with each product and on what eventId they registered
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: productId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: productId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${opt:stage}-Contributions
+        GlobalSecondaryIndexes:
+          - IndexName: ProductsByCreator
+            KeySchema:
+              - AttributeName: creator
+                KeyType: HASH
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - productId
+                - creatorScore
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: ProductsByPhotographer
+            KeySchema:
+              - AttributeName: photographer
+                KeyType: HASH
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - productId
+                - photographerScore
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+    Scores:
+      # Number of purchases in which the given contributor was the stated role (creator or photographer) for the product purchased
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: role
+            AttributeType: S
+          - AttributeName: score
+            AttributeType: N
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: role
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${opt:stage}-Scores
+        GlobalSecondaryIndexes:
+          - IndexName: ScoresByRole
+            KeySchema:
+              - AttributeName: role
+                KeyType: HASH
+              - AttributeName: score
+                KeyType: RANGE
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - userId
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+    # Winner Role for the lambda to read from Kinesis, to write to Logs, and to read from and write to Dynamo DB
+    WinnerReaderWriter:
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${opt:stage}WinnerReaderWriter
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                Service: lambda.amazonaws.com
+        ManagedPolicyArns:
+          - ${self:custom.private.teamPolicy}
+        Policies:
+          - PolicyName: CreateAndWriteToLogStream
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'logs:CreateLogStream'
+                  Resource:
+                    Fn::Join:
+                      - ':'
+                      - - Fn::GetAtt: [ WinnerLogGroup, Arn ]
+                        - '*'
+                - Effect: Allow
+                  Action:
+                    - 'logs:PutLogEvents'
+                  Resource:
+                    Fn::Join:
+                      - ':'
+                      - - Fn::GetAtt: [ WinnerLogGroup, Arn ]
+                        - '*'
+          - PolicyName: ReadFromKinesis
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'kinesis:GetRecords'
+                    - 'kinesis:GetShardIterator'
+                    - 'kinesis:DescribeStream'
+                    - 'kinesis:ListStreams'
+                  Resource: ${self:custom.stream}
+          - PolicyName: WriteToWinner
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:UpdateItem'
+                     - 'dynamodb:GetItem'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - Ref: Contributions
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Contributions
+                        - index
+                        - ProductsByCreator
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Contributions
+                        - index
+                        - ProductsByPhotographer
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:UpdateItem'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - Ref: Scores
