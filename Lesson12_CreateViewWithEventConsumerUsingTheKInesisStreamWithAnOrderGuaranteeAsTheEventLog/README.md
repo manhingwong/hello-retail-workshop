@@ -17,11 +17,15 @@ You can see that there is a lambda function, two DynamoDB tables, and a role wit
 Notice that the winner lambda has its event trigger as the stream and its starting point is the trim horizon - that means when its deployed, it will read all events from the beginning of the log, one micro-batch at a time.  The micro-batch size is determined in the serverless.yml by batchSize - this ensures that when the stream is backed-up, each lambda will process a reasonable number of events.
 
 ### Step 3: View the lambda code (winner.js)
-Here you can see that the lambda is parsing events and updating the contributions and scores DynamoDB tables as
-appropriate.  One difference with Lesson2 is that the Kinesis processing code is set to process batches synchronously.
-Another is that, in lieu of maintaining an Events table, the code now need only track the eventId of the last processed purchase, a benefit of the order guarantee.  It also no longer need track when a contributor registered, as the order guarantee ensures that these events are delivered before the purchase (that being the true order of the events that occurred).
-The Contributions table is now being updated with not only the eventId of the last purchase, but also with the number of that product purchased, an aggregation of the information previously kept unaggregated in the Events table.
+Here you can see that the lambda is parsing events and updating the contributions and scores DynamoDB tables as appropriate.
+
+One difference with Lesson2 is that the Kinesis processing code is set to process batches synchronously.
+Another is that, in lieu of maintaining an Events table, the code now need only track the eventId of the last processed purchase, a benefit of the order guarantee.
+It also no longer need track when a contributor registered, as the order guarantee ensures that these events are delivered before the purchase (that being the true order of the events that occurred).
+
+The Contributions table is now being updated with not only the eventId of the last purchase, but also with the total quantity of that product purchased, an aggregation of the information previously kept unaggregated in the Events table.
 It is important to note that the aggregation can only be at the product level, within the Contributions table.  We cannot, without arduous coding, maintain an aggregation at the level of the Scores table, even though that is the information we ultimately want.
+
 This is because the scores accumulate over all products.  Product events will be placed into different shards, because the partition key is based on product ID.  *The order guarantee applies only within a shard.*  Across shards, we cannot establish order without explicit work, some resolution strategy, and a need for additional variables to be tracked.  Therefore, simply maintaining the identity of the last processed purchase event within the Scores table will not guarantee a correct aggregation directly on the scores.  This simplification works only in the Contributions table, aggregating at the product level, since we know all events relevant to that product will be hashed into the same shard, where there *is* an order guarantee.
 
 ### Step 4: Deploy these resources, roles, and lambda function
