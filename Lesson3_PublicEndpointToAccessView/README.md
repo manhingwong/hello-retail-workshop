@@ -46,3 +46,30 @@ Note that this gateway can scale massively.  To handle a lot more traffic (thous
 
 You should expect about a 50ms P50 and 130ms P99 from this endpoint under any scale.  The results here will be accurate within about a second of the purchase activity from a customer on the core stream.
 
+
+---------------------------------------------------------------------------------------------------------------------
+
+### Using AWS-CLI and JQ
+
+#### AWS-CLI
+
+If not already installed, easiest way to get it is via NPM [AWS-CLI on NPM](https://www.npmjs.com/package/aws-cli)
+
+#### JQ
+
+Used to query and reshape JSON data in the shell, [JQ](https://stedolan.github.io/jq/download/) is used to parse the REST services and pull the info we need out of the responses.
+
+#### Query AWS for your API Gateway ID
+
+```sh
+export APIID=`aws apigateway get-rest-apis --region us-west-2 | jq '.items[] | select(.name | startswith("${STAGE}")) | .id' | sed 's/"//g'`
+echo $APIID
+```
+
+#### Use WGET to query your Winner API
+
+```sh
+wget -qO- "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/scores?role=creator&limit=2" | more
+wget -qO- "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/scores?role=photographer&limit=2" | more
+wget -qO- "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/contributions" | more
+```
