@@ -45,6 +45,10 @@ resources:
         AttributeDefinitions:
           - AttributeName: productId
             AttributeType: S
+          - AttributeName: creator
+            AttributeType: S
+          - AttributeName: photographer
+            AttributeType: S
         KeySchema:
           - AttributeName: productId
             KeyType: HASH
