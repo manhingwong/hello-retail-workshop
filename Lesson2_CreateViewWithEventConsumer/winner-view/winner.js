@@ -24,7 +24,7 @@ const constants = {
   TABLE_EVENTS_NAME: process.env.TABLE_EVENTS_NAME,
 }
 
-const kh = new KH(eventSchema, false, constants.MODULE)
+const kh = new KH.KinesisHandler(eventSchema, constants.MODULE)
 
 const dynamo = new aws.DynamoDB.DocumentClient()
 
