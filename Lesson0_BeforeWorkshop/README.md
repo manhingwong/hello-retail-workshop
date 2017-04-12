@@ -105,13 +105,14 @@ $ git clone https://github.com/Nordstrom/hello-retail-workshop.git
 ```
 For more information on using github, go to https://help.github.com/articles/fork-a-repo/
 
-### Step 7: choose a unique $STAGE name for your deployed services
+### Step 7: choose a unique $STAGE name and set the $REGION for your deployed services
 
 We recommend you use your LAN ID to ensure it's unique, but you can use any name you want. Go ahead and set a shell variable to use later on:
 
 ```sh
 export STAGE=b0bb
+export REGION=us-west-2
 ```
 
-For the rest of the workshop, the commands will reference `$STAGE` and you will be able to find your components in the AWS console using your stage name.
+For the rest of the workshop, the commands will reference `$STAGE` and `$REGION` and you will be able to find your components in the AWS console using your stage name.
 

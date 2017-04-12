@@ -29,7 +29,7 @@ The default lambda name will be fanout (same as using the option --function fano
 
 ### Step B: Register all source-to-target mappings.  Source is the hello-retail stream (Core Stream), in our use case, and target is your local copy of the hello-retail stream.  As an example of registering one kinesis stream to another kinesis stream:
 ```sh
-$  ./fanout register kinesis --source-arn arn:aws:kinesis:<CoreStreamAWSRegion>:<CoreStreamAWSAccountNumber>:stream/<CoreStreamName> --id $STAGE  --destination-region <YourAWSRegion> --active true --destination-role-arn <the role arn in Step 5 above> --destination <the Kinesis arn in Step 5 above>
+$  ./fanout register kinesis --source-arn arn:aws:kinesis:<CoreStreamAWSRegion>:<CoreStreamAWSAccountNumber>:stream/<CoreStreamName> --id $STAGE  --destination-region $REGION --active true --destination-role-arn <the role arn in Step 5 above> --destination <the Kinesis arn in Step 5 above>
 ```
 The id does not have to be your stage, but does need to be something unique among all the source-to-target mappings, as these are stored in a Dynamo DB using the id as a key.
 *If you do not set active true, you will need to activate the mapping in a separate step before you will receive any data.*
