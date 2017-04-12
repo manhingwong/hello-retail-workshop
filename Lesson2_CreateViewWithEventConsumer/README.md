@@ -16,7 +16,7 @@ Here you can see that the lambda is parsing events and updating the contribution
 From your winner-view directory
 ```sh
 $ npm install
-$ serverless deploy -s <your stage name>
+$ serverless deploy -s $STAGE
 ```
 ### Step 5: confirm that the lambda function is deployed
 Look in the AWS console under Lambda - look for the winner lambda
