@@ -67,7 +67,6 @@ const impl = {
       '#u=:u,',
       '#ub=:ub,',
       '#ro=:ro,', // NB don't need to check if exists, because order guarantee means registration event will always come first and nature of hello-retail does not have any way to change a creator or photographer, once registered
-      '#sc=:sc,', // NB don't need to check if exists, because order guarantee means registration event will always come first and nature of hello-retail does not have any way to change a creator or photographer, once registered
       '#ev=:ev',
     ]
     const attNames = {
@@ -76,8 +75,8 @@ const impl = {
       '#u': 'updated',
       '#ub': 'updatedBy',
       '#ro': role,
-      '#sc': `${role}Score`, // These scores may be different for the two roles because some purchases may happen between the time that the creator and photographer registered
       '#ev': 'lastEventId',
+      '#pe': 'photographerExists',
     }
     const attValues = {
       ':c': updated,
@@ -85,16 +84,19 @@ const impl = {
       ':u': updated,
       ':ub': event.origin,
       ':ro': event.origin,
-      ':sc': 0,
       ':ev': event.eventId,
     }
 
     if (role === 'creator') {
-      expression.push(', #ap=:ap')
-      attNames['#ap'] = 'awaitPhotographer'
-      attValues[':ap'] = true
+      expression.push(', #sc=:zero')
+      expression.push(', #sp=:zero')
+      expression.push(', #pe=:pe')
+      attNames['#sc'] = 'creatorScore' // These scores may be different for the two roles because some purchases may happen between the time that the creator and photographer registered
+      attNames['#sp'] = 'photographerScore'
+      attValues[':pe'] = -1
+      attValues[':zero'] = 0
     } else if (role === 'photographer') {
-      expression.push('remove #ap=:ap')
+      expression.push('remove #pe')
     }
 
     const dbParamsContributions = {
@@ -142,7 +144,7 @@ const impl = {
       '#u=:u,',
       '#ub=:ub,',
       '#sc=#sc + :inc,', // Don't need to check if this exist because order guarantee says this already will be there
-      '#sp=if_not_exists(#ap,:#sp + :inc),', // Only increment this if photographer has registered, which removes the awaitPhotographer attribute TODO check if this really works when the path is different from the attribute
+      '#sp=if_not_exists(#pe,#sp) + :inc,', // Only increment this if photographer has registered, which removes the photographerExists attribute.  if_not_exists evaluates to the path (first argument) if the path exists in the item, otherwise it evaluates to the operand (second argument)
       '#ev=:ev',
     ]
     const attNames = {
@@ -152,7 +154,7 @@ const impl = {
       '#ub': 'updatedBy',
       '#sc': 'creatorScore', // These may be different for the two roles because some purchases may happen between the time that the creator and photographer registered
       '#sp': 'photographerScore',
-      '#ap': 'awaitPhotographer', // For the conditional on whether photographer exists yet
+      '#pe': 'photographerExists', // For the conditional on whether photographer exists yet
       '#ev': 'lastEventId',
     }
     const attValues = {
@@ -165,7 +167,12 @@ const impl = {
     }
     const callback = (err) => {
       if (err) {
-        complete(`${constants.METHOD_UPDATE_PURCHASE_EVENT} - errors updating DynamoDb: ${err}`)
+        if (err.code && err.code === 'ConditionalCheckFailedException') {
+          console.log(`${constants.METHOD_UPDATE_PURCHASE_EVENT} - event has already been processed or creation event for product ${id} occurred before stream horizon.  Skipping.`)
+          complete()
+        } else {
+          complete(`${constants.METHOD_UPDATE_PURCHASE_EVENT} - errors updating DynamoDb: ${err}`)
+        }
       } else {
         impl.updateScoresTable(origin, id, complete)
       }
@@ -177,7 +184,7 @@ const impl = {
         productId: id,
       },
       UpdateExpression: expression.join(' '),
-      ConditionExpression: '#ev < ev',
+      ConditionExpression: '#ev < :ev',
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
       ReturnValues: 'NONE',
@@ -253,7 +260,7 @@ const impl = {
         const dbParamsCreator = {
           TableName: constants.TABLE_CONTRIBUTIONS_NAME,
           IndexName: 'ProductsByCreator',
-          ProjectionExpression: '#i #s', // TODO remove id after removing console.log, only need the score really
+          ProjectionExpression: '#i, #s', // TODO remove id after removing console.log, only need the score really
           KeyConditionExpression: '#ro = :ro',
           ExpressionAttributeNames: {
             '#i': 'productId', // TODO remove after removing console.log
@@ -296,7 +303,7 @@ const impl = {
           const dbParamsPhotographer = {
             TableName: constants.TABLE_CONTRIBUTIONS_NAME,
             IndexName: 'ProductsByPhotographer',
-            ProjectionExpression: '#i #s', // TODO remove id after removing console.log, only need the score really
+            ProjectionExpression: '#i, #s', // TODO remove id after removing console.log, only need the score really
             KeyConditionExpression: '#ro = :ro',
             ExpressionAttributeNames: {
               '#i': 'productId', // TODO remove after removing console.log
@@ -345,6 +352,8 @@ const impl = {
 kh.registerSchemaMethodPair(productCreateSchema, impl.registerContributor.bind(null, 'creator'))
 kh.registerSchemaMethodPair(productImageSchema, impl.registerContributor.bind(null, 'photographer'))
 kh.registerSchemaMethodPair(productPurchaseSchema, impl.updatePurchaseEvent)
+
+console.log('set up ', kh)
 
 module.exports = {
   processKinesisEvent: kh.processKinesisEvent.bind(kh),
