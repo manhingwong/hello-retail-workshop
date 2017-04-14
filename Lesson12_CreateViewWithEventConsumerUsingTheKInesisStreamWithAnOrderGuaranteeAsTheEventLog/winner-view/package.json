@@ -1,15 +1,15 @@
 {
   "name": "hello-retail-workshop-winner-view",
   "version": "0.0.1",
-  "description": "A stream processor that accumulates our latest best knowledge regarding each product, as it relates to calculating the winners.",
+  "description": "A stream processor that accumulates our latest best knowledge regarding each product, as it relates to calculating the winners, assuming an order guarantee on the events.",
   "main": "winner.js",
   "author": "Nordstrom",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/Nordstrom/hello-retail-workshop/issues"
   },
-  "homepage": "https://github.com/Nordstrom/hello-retail-workshop/Lesson2_CreateViewWithEventConsumer#readme",
+  "homepage": "https://github.com/Nordstrom/hello-retail-workshop/Lesson12_CreateViewWithEventConsumerUsingTheKinesisStreamWithAnOrderGuaranteeAsTheEventLog#readme",
   "dependencies": {
-    "ajv": "^4.10.4"
+    "kinesis-handler": "git+https://github.com/Nordstrom/kinesis-handler.git#ENG-2283"
   }
 }
