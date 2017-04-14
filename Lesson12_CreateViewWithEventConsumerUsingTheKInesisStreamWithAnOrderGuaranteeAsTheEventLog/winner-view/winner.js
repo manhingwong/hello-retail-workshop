@@ -12,6 +12,7 @@ const productPurchaseSchema = require('./product-purchase-schema.json')
 const constants = {
   // self
   MODULE: 'winner-view/winner.js',
+  UNKNOWN: 'UNKNOWN',
   // methods
   METHOD_REGISTER_CONTRIBUTOR: 'registerContributor',
   METHOD_UPDATE_SCORES_TABLES: 'updateScoresTable',
@@ -59,14 +60,15 @@ const impl = {
       }
     }
 
-    // Record product's contributor registration
+    // Record product's contributor registration.  Note if someone manually re-registers as the contributor later, it gets ignored and credit continues to accumulate to the original contributor (until we explicitly support re-shoots as a feature).
     const expression = [
       'set',
       '#c=if_not_exists(#c,:c),',
       '#cb=if_not_exists(#cb,:cb),',
       '#u=:u,',
       '#ub=:ub,',
-      '#ro=:ro,', // NB don't need to check if exists, because order guarantee means registration event will always come first and nature of hello-retail does not have any way to change a creator or photographer, once registered
+      '#ro=if_not_exists(#ro,:ro),', // We shouldn't have to block overwrites, because order guarantee should mean registration event will always come first and nature of hello-retail should not have any way to change a creator or photographer, once registered, but just saw this happen with photographers because someone went in and reset by hand.  Until we have re-shoots be a feature, all credit still goes to original contributor.
+      '#sc=if_not_exists(#sc,:zero),', // Score initializes at 0.  If this was an attempt to put in new contributor, then that gets blocked (no overwrites of contributors), so score should not reset to 0 (unless we later make re-shoots a feature).
       '#ev=:ev',
     ]
     const attNames = {
@@ -75,6 +77,7 @@ const impl = {
       '#u': 'updated',
       '#ub': 'updatedBy',
       '#ro': role,
+      '#sc': `${role}Score`, // These scores may be different for the two roles because some purchases may happen between the time that the creator and photographer registered.  Each score should be initialized only its registration event.
       '#ev': 'lastEventId',
       '#pe': 'photographerExists',
     }
@@ -85,18 +88,21 @@ const impl = {
       ':ub': event.origin,
       ':ro': event.origin,
       ':ev': event.eventId,
+      ':zero': 0,
     }
 
     if (role === 'creator') {
-      expression.push(', #sc=:zero')
-      expression.push(', #sp=:zero')
-      expression.push(', #pe=:pe')
-      attNames['#sc'] = 'creatorScore' // These scores may be different for the two roles because some purchases may happen between the time that the creator and photographer registered
       attNames['#sp'] = 'photographerScore'
+      expression.push(', #sp=if_not_exists(#sp,:zero)') // To keep if_not_exists from blowing up, this must be defined before any purchase events happen
+      expression.push(', #pe=:pe')
       attValues[':pe'] = -1
-      attValues[':zero'] = 0
-    } else if (role === 'photographer') {
-      expression.push('remove #pe')
+    } else if (role === 'photographer') { // NB if there was no creation event but the photographer event made it on, the photographer should still be unknown, because the score has been accumulating as if he were unknown, but there is no easy way to overwrite the name with 'unknown' if one pass, so will handle this when updatingScores instead.  Basically, if you see 'unknown' in the creator field, ignore the person who is in the photographer field, if any.
+      attNames['#scr'] = 'creatorScore'
+      attNames['#cr'] = 'creator'
+      attValues[':unk'] = constants.UNKNOWN
+      expression.push(', #scr=if_not_exists(#scr,:zero)')
+      expression.push(', #cr=if_not_exists(#cr,:unk)') // To block any creator attribution for events without a creation event (i.e., log incomplete from the front for product)
+      expression.push('remove #pe') // REMOVE: If the attributes do not exist, nothing happens
     }
 
     const dbParamsContributions = {
@@ -136,15 +142,17 @@ const impl = {
     const origin = event.origin
     const updated = Date.now()
 
-    // Update product scores for the purchase event.  NB We know at least one contributor exists, because order guarantee says that the creation event had to have happened already.
+    // Update product scores for the purchase event.  NB We should know at least one contributor exists, because order guarantee says that the creation event had to have happened already, but sadly, if it gets trimmed off, we know nothing.  To keep things simple, for products without a creation event we will attribute everything to UNKNOWN for the photographer, too, even if that makes it onto the stream).
     const expression = [
       'set',
-      '#c=if_not_exists(#c,:c),',
+      '#c=if_not_exists(#c,:c),', // if_not_exists evaluates to the path (first argument) if the path exists in the item, otherwise it evaluates to the operand (second argument)
       '#cb=if_not_exists(#cb,:cb),',
       '#u=:u,',
       '#ub=:ub,',
-      '#sc=#sc + :inc,', // Don't need to check if this exist because order guarantee says this already will be there
-      '#sp=if_not_exists(#pe,#sp) + :inc,', // Only increment this if photographer has registered, which removes the photographerExists attribute.  if_not_exists evaluates to the path (first argument) if the path exists in the item, otherwise it evaluates to the operand (second argument)
+      '#sc=if_not_exists(#sc,:zero) + :inc,', // Shouldn't need to check if this exist because order guarantee says this already will be there, but if the creation event got trimmed off, then we'll still fail trying to add 1 to a nonexistent value.  No creator will get the credit, just an 'unknown'.
+      // '#sp=if_not_exists(#pe,if_not_exists(#sp,:dec)) + :inc,', // NB This will still be wrong on the next buy before the photographer shows up, so don't see how we can allow a photographer event without the guarantee of a creator event.
+      '#sp=if_not_exists(#pe,if_not_exists(#sp,:zero)) + :inc,', // Only increment this if a creation event was logged and a photographer registers (which removes the #pe attribute) or if no creation event was logged in the first place, in which latter case it doesn't matter, because the number goes to 'unknown'.
+      '#ro=if_not_exists(#ro,:unk),', // Note that if the creator got chopped off the front of the stream, we need to attribute the purchase to an unknown.  If we were sure no manual creation event got lobbed on later, we could maybe just rely on emptiness, but we need this to be consistent with the idea (in registerContributor) that manual events are blocked from changing who gets credit (until we make this a feature).
       '#ev=:ev',
     ]
     const attNames = {
@@ -156,6 +164,7 @@ const impl = {
       '#sp': 'photographerScore',
       '#pe': 'photographerExists', // For the conditional on whether photographer exists yet
       '#ev': 'lastEventId',
+      '#ro': 'creator',
     }
     const attValues = {
       ':c': updated,
@@ -163,7 +172,10 @@ const impl = {
       ':u': updated,
       ':ub': origin,
       ':inc': 1,
+      // ':dec': -1,
+      ':zero': 0,
       ':ev': eventId,
+      ':unk': constants.UNKNOWN,
     }
     const callback = (err) => {
       if (err) {
@@ -238,102 +250,58 @@ const impl = {
         const data = responseBase.Item
         if (!data || data.length === 0) {
           complete(`${constants.METHOD_UPDATE_SCORES_TABLES} - unexpectedly could not find product ${id} from DynamoDb table ${constants.TABLE_CONTRIBUTIONS_NAME}`)
-        }
-
-        const updateExp = [
-          'set',
-          '#u=:u,',
-          '#ub=:ub,',
-          '#sc=:sc',
-        ].join(' ')
-        const attNames = {
-          '#u': 'updated',
-          '#ub': 'updatedBy',
-          '#sc': 'score',
-        }
-        const attValues = {
-          ':u': updated,
-          ':ub': origin,
-        }
-
-        // Because this method is only called through the occurrence of a purchase event and that must be subsequent to a creator registration, we definitely have a creator field
-        const dbParamsCreator = {
-          TableName: constants.TABLE_CONTRIBUTIONS_NAME,
-          IndexName: 'ProductsByCreator',
-          ProjectionExpression: '#i, #s', // TODO remove id after removing console.log, only need the score really
-          KeyConditionExpression: '#ro = :ro',
-          ExpressionAttributeNames: {
-            '#i': 'productId', // TODO remove after removing console.log
-            '#s': 'creatorScore',
-            '#ro': 'creator',
-          },
-          ExpressionAttributeValues: {
-            ':ro': data.creator,
-          },
-        }
-
-        dynamo.query(dbParamsCreator, (err, response) => {
-          if (err) { // error from dynamo
-            updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Creator DynamoDb: ${err}`)
-          } else {
-            console.log('Found products ', response.Items) // TODO remove
-
-            const foundScores = response.Items.map(item => item.creatorScore)
-            const attValuesCreator = Object.assign({}, attValues)
-            attValuesCreator[':sc'] = foundScores.length === 0 ? 0 : foundScores.reduce((acc, val) => acc + val)
-
-            const params = {
-              TableName: constants.TABLE_SCORES_NAME,
-              Key: {
-                userId: data.creator,
-                role: 'creator',
-              },
-              UpdateExpression: updateExp,
-              ExpressionAttributeNames: attNames,
-              ExpressionAttributeValues: attValuesCreator,
-              ReturnValues: 'NONE',
-              ReturnConsumedCapacity: 'NONE',
-              ReturnItemCollectionMetrics: 'NONE',
-            }
-            dynamo.update(params, updateCallback)
+        } else {
+          const updateExp = [
+            'set',
+            '#u=:u,',
+            '#ub=:ub,',
+            '#sc=:sc',
+          ].join(' ')
+          const attNames = {
+            '#u': 'updated',
+            '#ub': 'updatedBy',
+            '#sc': 'score',
           }
-        })
+          const attValues = {
+            ':u': updated,
+            ':ub': origin,
+          }
 
-        if (data.photographer) {
-          const dbParamsPhotographer = {
+          // Because this method is only called through the occurrence of a purchase event and that must be subsequent to a creator registration or set to UNKNOWN for lack of a creator registration, we definitely have a creator field
+          const dbParamsCreator = {
             TableName: constants.TABLE_CONTRIBUTIONS_NAME,
-            IndexName: 'ProductsByPhotographer',
+            IndexName: 'ProductsByCreator',
             ProjectionExpression: '#i, #s', // TODO remove id after removing console.log, only need the score really
             KeyConditionExpression: '#ro = :ro',
             ExpressionAttributeNames: {
               '#i': 'productId', // TODO remove after removing console.log
-              '#s': 'photographerScore',
-              '#ro': 'photographer',
+              '#s': 'creatorScore',
+              '#ro': 'creator',
             },
             ExpressionAttributeValues: {
-              ':ro': data.photographer,
+              ':ro': data.creator,
             },
           }
 
-          dynamo.query(dbParamsPhotographer, (err, response) => {
+          dynamo.query(dbParamsCreator, (err, response) => {
             if (err) { // error from dynamo
-              updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb: ${err}`)
+              updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Creator DynamoDb: ${err}`)
             } else {
               console.log('Found products ', response.Items) // TODO remove
 
-              const foundScores = response.Items.map(item => item.photographerScore)
-              const attValuesPhotographer = Object.assign({}, attValues)
-              attValuesPhotographer[':sc'] = foundScores.length === 0 ? 0 : foundScores.reduce((acc, val) => acc + val)
+              const foundScores = response.Items.map(item => item.creatorScore) // There is always a score by this point
+              const attValuesCreator = Object.assign({}, attValues)
+              attValuesCreator[':sc'] = foundScores.length === 0 ? 0 : foundScores.reduce((acc, val) => acc + val)
 
               const params = {
                 TableName: constants.TABLE_SCORES_NAME,
                 Key: {
-                  userId: data.photographer,
-                  role: 'photographer',
+                  userId: data.creator,
+                  role: 'creator',
                 },
                 UpdateExpression: updateExp,
                 ExpressionAttributeNames: attNames,
-                ExpressionAttributeValues: attValuesPhotographer,
+                ExpressionAttributeValues: attValuesCreator,
                 ReturnValues: 'NONE',
                 ReturnConsumedCapacity: 'NONE',
                 ReturnItemCollectionMetrics: 'NONE',
@@ -341,8 +309,136 @@ const impl = {
               dynamo.update(params, updateCallback)
             }
           })
-        } else { // free pass
-          updateCallback()
+
+          if (data.creator === constants.UNKNOWN) {
+            // Set photographer to unknown fo this product, then update photographer score.
+            const phExp = [
+              'set',
+              '#c=if_not_exists(#c,:c),', // very strange of this didn't already exist
+              '#cb=if_not_exists(#cb,:cb),',
+              '#u=:u,',
+              '#ub=:ub,',
+              '#ro=:unk',
+            ]
+            const phAttNames = {
+              '#c': 'created',
+              '#cb': 'createdBy',
+              '#u': 'updated',
+              '#ub': 'updatedBy',
+              '#ro': 'photographer',
+            }
+            const phAttValues = {
+              ':c': updated,
+              ':cb': origin,
+              ':u': updated,
+              ':ub': origin,
+              ':unk': constants.UNKNOWN,
+            }
+            const phCallback = (errPhUnk) => {
+              if (errPhUnk) {
+                updateCallback(`${constants.METHOD_UPDATE_PURCHASE_EVENT} - errors updating Contributions DynamoDb so photographer is set to UNKNOWN: ${errPhUnk}`)
+              } else {
+                const dbParamsUnk = {
+                  TableName: constants.TABLE_CONTRIBUTIONS_NAME,
+                  IndexName: 'ProductsByPhotographer',
+                  ProjectionExpression: '#i, #s', // TODO remove id after removing console.log, only need the score really
+                  KeyConditionExpression: '#ro = :ro',
+                  ExpressionAttributeNames: {
+                    '#i': 'productId', // TODO remove after removing console.log
+                    '#s': 'photographerScore',
+                    '#ro': 'photographer',
+                  },
+                  ExpressionAttributeValues: {
+                    ':ro': constants.UNKNOWN,
+                  },
+                }
+
+                dynamo.query(dbParamsUnk, (err, response) => {
+                  if (err) { // error from dynamo
+                    updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb for the UNKNOWN photographer: ${err}`)
+                  } else {
+                    console.log('Found products ', response.Items) // TODO remove
+
+                    const foundScores = response.Items.map(item => item.photographerScore) // There is always a score by this point
+                    const attValuesUnk = Object.assign({}, attValues)
+                    attValuesUnk[':sc'] = foundScores.length === 0 ? 0 : foundScores.reduce((acc, val) => acc + val)
+
+                    const params = {
+                      TableName: constants.TABLE_SCORES_NAME,
+                      Key: {
+                        userId: constants.UNKNOWN,
+                        role: 'photographer',
+                      },
+                      UpdateExpression: updateExp,
+                      ExpressionAttributeNames: attNames,
+                      ExpressionAttributeValues: attValuesUnk,
+                      ReturnValues: 'NONE',
+                      ReturnConsumedCapacity: 'NONE',
+                      ReturnItemCollectionMetrics: 'NONE',
+                    }
+                    dynamo.update(params, updateCallback)
+                  }
+                })
+              }
+            }
+            const dbParamsPh = {
+              TableName: constants.TABLE_CONTRIBUTIONS_NAME,
+              Key: {
+                productId: id,
+              },
+              UpdateExpression: phExp.join(' '),
+              ExpressionAttributeNames: phAttNames,
+              ExpressionAttributeValues: phAttValues,
+              ReturnValues: 'NONE',
+              ReturnConsumedCapacity: 'NONE',
+              ReturnItemCollectionMetrics: 'NONE',
+            }
+            dynamo.update(dbParamsPh, phCallback)
+          } else if (data.photographer) {
+            const dbParamsPhotographer = {
+              TableName: constants.TABLE_CONTRIBUTIONS_NAME,
+              IndexName: 'ProductsByPhotographer',
+              ProjectionExpression: '#i, #s', // TODO remove id after removing console.log, only need the score really
+              KeyConditionExpression: '#ro = :ro',
+              ExpressionAttributeNames: {
+                '#i': 'productId', // TODO remove after removing console.log
+                '#s': 'photographerScore',
+                '#ro': 'photographer',
+              },
+              ExpressionAttributeValues: {
+                ':ro': data.photographer,
+              },
+            }
+
+            dynamo.query(dbParamsPhotographer, (err, response) => {
+              if (err) { // error from dynamo
+                updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb: ${err}`)
+              } else {
+                console.log('Found products ', response.Items) // TODO remove
+
+                const foundScores = response.Items.map(item => item.photographerScore) // There is always a score by this point
+                const attValuesPhotographer = Object.assign({}, attValues)
+                attValuesPhotographer[':sc'] = foundScores.length === 0 ? 0 : foundScores.reduce((acc, val) => acc + val)
+
+                const params = {
+                  TableName: constants.TABLE_SCORES_NAME,
+                  Key: {
+                    userId: data.photographer,
+                    role: 'photographer',
+                  },
+                  UpdateExpression: updateExp,
+                  ExpressionAttributeNames: attNames,
+                  ExpressionAttributeValues: attValuesPhotographer,
+                  ReturnValues: 'NONE',
+                  ReturnConsumedCapacity: 'NONE',
+                  ReturnItemCollectionMetrics: 'NONE',
+                }
+                dynamo.update(params, updateCallback)
+              }
+            })
+          } else { // free pass
+            updateCallback()
+          }
         }
       }
     })
@@ -352,8 +448,6 @@ const impl = {
 kh.registerSchemaMethodPair(productCreateSchema, impl.registerContributor.bind(null, 'creator'))
 kh.registerSchemaMethodPair(productImageSchema, impl.registerContributor.bind(null, 'photographer'))
 kh.registerSchemaMethodPair(productPurchaseSchema, impl.updatePurchaseEvent)
-
-console.log('set up ', kh)
 
 module.exports = {
   processKinesisEvent: kh.processKinesisEvent.bind(kh),
