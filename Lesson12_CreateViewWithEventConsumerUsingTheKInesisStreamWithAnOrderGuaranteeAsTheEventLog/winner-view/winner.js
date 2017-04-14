@@ -60,14 +60,14 @@ const impl = {
       }
     }
 
-    // Record product's contributor registration.  Note if someone manually re-registers as the contributor later, it gets ignored and credit continues to accumulate to the original contributor (until we explicitly support re-shoots as a feature).
+    // Note if someone manually re-registers as the contributor later, it gets ignored and credit continues to accumulate to the original contributor (until we explicitly support re-shoots as a feature).
     const expression = [
       'set',
       '#c=if_not_exists(#c,:c),',
       '#cb=if_not_exists(#cb,:cb),',
       '#u=:u,',
       '#ub=:ub,',
-      '#ro=if_not_exists(#ro,:ro),', // We shouldn't have to block overwrites, because order guarantee should mean registration event will always come first and nature of hello-retail should not have any way to change a creator or photographer, once registered, but just saw this happen with photographers because someone went in and reset by hand.  Until we have re-shoots be a feature, all credit still goes to original contributor.
+      '#ro=if_not_exists(#ro,:ro),', // We shouldn't have to block overwrites, because order guarantee should mean registration event will always come first and nature of hello-retail should not have any way to change a creator or photographer, once registered, BUT just saw this happen with photographers because someone went in and reset by hand.  Until we have re-shoots be a feature, all credit still goes to original contributor.
       '#sc=if_not_exists(#sc,:zero),', // Score initializes at 0.  If this was an attempt to put in new contributor, then that gets blocked (no overwrites of contributors), so score should not reset to 0 (unless we later make re-shoots a feature).
       '#ev=:ev',
     ]
@@ -96,7 +96,7 @@ const impl = {
       expression.push(', #sp=if_not_exists(#sp,:zero)') // To keep if_not_exists from blowing up, this must be defined before any purchase events happen
       expression.push(', #pe=:pe')
       attValues[':pe'] = -1
-    } else if (role === 'photographer') { // NB if there was no creation event but the photographer event made it on, the photographer should still be unknown, because the score has been accumulating as if he were unknown, but there is no easy way to overwrite the name with 'unknown' if one pass, so will handle this when updatingScores instead.  Basically, if you see 'unknown' in the creator field, ignore the person who is in the photographer field, if any.
+    } else if (role === 'photographer') { // NB if there was no creation event but the photographer event made it on, the photographer should still be UNKNOWN, because the score has been accumulating as if he were UNKNOWN, but there is no easy way to overwrite the name with UNKNOWN if one pass, so will handle this when updatingScores instead.  Basically, if you see UNKNOWN in the creator field, ignore the person who is in the photographer field, if any.
       attNames['#scr'] = 'creatorScore'
       attNames['#cr'] = 'creator'
       attValues[':unk'] = constants.UNKNOWN
@@ -142,17 +142,16 @@ const impl = {
     const origin = event.origin
     const updated = Date.now()
 
-    // Update product scores for the purchase event.  NB We should know at least one contributor exists, because order guarantee says that the creation event had to have happened already, but sadly, if it gets trimmed off, we know nothing.  To keep things simple, for products without a creation event we will attribute everything to UNKNOWN for the photographer, too, even if that makes it onto the stream).
+    // We should know at least one contributor exists, because order guarantee says that the creation event had to have happened already, but sadly, it might get trimmed off.  To keep things simple, for products without a creation event we will attribute everything to UNKNOWN for the photographer, too (even if that makes it onto the stream).
     const expression = [
       'set',
       '#c=if_not_exists(#c,:c),', // if_not_exists evaluates to the path (first argument) if the path exists in the item, otherwise it evaluates to the operand (second argument)
       '#cb=if_not_exists(#cb,:cb),',
       '#u=:u,',
       '#ub=:ub,',
-      '#sc=if_not_exists(#sc,:zero) + :inc,', // Shouldn't need to check if this exist because order guarantee says this already will be there, but if the creation event got trimmed off, then we'll still fail trying to add 1 to a nonexistent value.  No creator will get the credit, just an 'unknown'.
-      // '#sp=if_not_exists(#pe,if_not_exists(#sp,:dec)) + :inc,', // NB This will still be wrong on the next buy before the photographer shows up, so don't see how we can allow a photographer event without the guarantee of a creator event.
-      '#sp=if_not_exists(#pe,if_not_exists(#sp,:zero)) + :inc,', // Only increment this if a creation event was logged and a photographer registers (which removes the #pe attribute) or if no creation event was logged in the first place, in which latter case it doesn't matter, because the number goes to 'unknown'.
-      '#ro=if_not_exists(#ro,:unk),', // Note that if the creator got chopped off the front of the stream, we need to attribute the purchase to an unknown.  If we were sure no manual creation event got lobbed on later, we could maybe just rely on emptiness, but we need this to be consistent with the idea (in registerContributor) that manual events are blocked from changing who gets credit (until we make this a feature).
+      '#sc=if_not_exists(#sc,:zero) + :inc,', // Shouldn't need to check if this exist because order guarantee says this already will be there, but if the creation event got trimmed off, then we'll still fail trying to add 1 to a nonexistent value.  No creator will get the credit, just UNKNOWN.
+      '#sp=if_not_exists(#pe,if_not_exists(#sp,:zero)) + :inc,', // Only increment this if a creation event was logged and a photographer registers (which removes the #pe attribute) or if no creation event was logged in the first place, in which latter case it doesn't matter, because the number goes to UNKNOWN.
+      '#ro=if_not_exists(#ro,:unk),', // Note that if the creator got chopped off the front of the stream, we need to attribute the purchase to UNKNOWN.  If we were sure no manual creation event got lobbed on later, we could maybe just rely on emptiness, but we need this to be consistent with the idea (in registerContributor) that manual events are blocked from changing who gets credit (until we make this a feature).
       '#ev=:ev',
     ]
     const attNames = {
@@ -172,7 +171,6 @@ const impl = {
       ':u': updated,
       ':ub': origin,
       ':inc': 1,
-      // ':dec': -1,
       ':zero': 0,
       ':ev': eventId,
       ':unk': constants.UNKNOWN,
@@ -206,7 +204,7 @@ const impl = {
     dynamo.update(dbParamsEvents, callback)
   },
   /**
-   * Update scores table on whatever contributor(s) were just affected.
+   * Update scores table on whatever contributor(s) were just affected.  This is also where photographers are updated to UNKNOWN in the cases where the creation event didn't make it onto the stream.
    * @param id Which product id was affected by last purchase event.
    * @param origin Who/what generated the activity leading to this update
    * @param complete The callback to inform of completion, with optional error parameter.
@@ -250,7 +248,7 @@ const impl = {
         const data = responseBase.Item
         if (!data || data.length === 0) {
           complete(`${constants.METHOD_UPDATE_SCORES_TABLES} - unexpectedly could not find product ${id} from DynamoDb table ${constants.TABLE_CONTRIBUTIONS_NAME}`)
-        } else {
+        } else { // Sort out the creator
           const updateExp = [
             'set',
             '#u=:u,',
@@ -267,7 +265,7 @@ const impl = {
             ':ub': origin,
           }
 
-          // Because this method is only called through the occurrence of a purchase event and that must be subsequent to a creator registration or set to UNKNOWN for lack of a creator registration, we definitely have a creator field
+          // Because this method is only called through the occurrence of a purchase event and that must be subsequent to a creator registration or set to UNKNOWN on the very next event for lack of a creator registration, we definitely have a creator field
           const dbParamsCreator = {
             TableName: constants.TABLE_CONTRIBUTIONS_NAME,
             IndexName: 'ProductsByCreator',
@@ -310,8 +308,9 @@ const impl = {
             }
           })
 
+          // Sort out the photographer
           if (data.creator === constants.UNKNOWN) {
-            // Set photographer to unknown fo this product, then update photographer score.
+            // Set photographer to UNKNOWN fo this product, then update photographer score.
             const phExp = [
               'set',
               '#c=if_not_exists(#c,:c),', // very strange of this didn't already exist
@@ -394,7 +393,7 @@ const impl = {
               ReturnItemCollectionMetrics: 'NONE',
             }
             dynamo.update(dbParamsPh, phCallback)
-          } else if (data.photographer) {
+          } else if (data.photographer) { // This is the plain-vanilla photographer case.
             const dbParamsPhotographer = {
               TableName: constants.TABLE_CONTRIBUTIONS_NAME,
               IndexName: 'ProductsByPhotographer',
@@ -436,7 +435,7 @@ const impl = {
                 dynamo.update(params, updateCallback)
               }
             })
-          } else { // free pass
+          } else { // Free pass, nothing to do for photographer
             updateCallback()
           }
         }
