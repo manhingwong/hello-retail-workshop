@@ -6,9 +6,10 @@ Setup nordstrom.slack.com and subscribe to the #serverless-discuss channel, this
 
 ### Step 1: Install node.js
 Ensure that you have [Node.js](https://nodejs.org/en/) (v4 or better) installed.
+We suggest using [NVM](https://github.com/creationix/nvm/blob/master/README.markdown) to allow side-by-side install of different node versions.
 
-### Step 2: Ensure that you have access to an AWS Account.
-If you are a Nordstrom engineer, you may want to use a Nordstrom Public Cloud V2 account.
+### Step 2: Ensure that you have access to a Public Cloud V2 (PCV2) AWS Account.
+If you are a Nordstrom engineer, you'll want to use a Nordstrom Public Cloud V2 account.
 Nordstrom Public Cloud V2 is a substantial improvement to Pub Cloud V1.  It gives you far greater access and control to all of the things.  This workshop will not work on a public cloud v1 account.  If you are not a Nordstrom engineer and you're reading this a generic AWS account will work just fine.  If you're at a company that limits your ability to create roles/buckets/API Gateways your mileage will vary.
 
 #### Option 1: Your team already has a public cloud v2 account
@@ -60,6 +61,26 @@ $ export AWS_SESSION_TOKEN=<session-token>             # this one is optional
 ```
 ### Step 4: serverless deployments require some information you may not want to check in to a public repo.  Fill in the information in private.yml.
 
+Here's an example private.yml with the values in the correct format. Specific values will be available during the workshop.
+
+```yml
+region: us-east-1
+
+profile: your-preexisting-profile
+accountId: 999999999999
+
+teamRole: MY-TEAM-DevUsers-Team
+teamPolicy: arn:aws:iam::99999999999:policy/appteam/that-managed-policy-name-if-you-are-in-public-cloud-v2
+
+# deploymentBucket: #<optional S3 bucket> # uncomment the use of this variable in your serverless.yml files to deploy to a specific bucket
+
+# Core Stream
+coreStream:
+  accountId: 8888888888888
+  awslabsRoleArn: arn:aws:iam::${self:custom.private.coreStream.accountId}:role/fanoutRole
+
+```
+
 ### Step 5: install serverless node package on your machine.
 
 #### Note: if you are on a VPN and use a proxy, export your proxy to your shell
@@ -83,3 +104,15 @@ From your workshop directory:
 $ git clone https://github.com/Nordstrom/hello-retail-workshop.git
 ```
 For more information on using github, go to https://help.github.com/articles/fork-a-repo/
+
+### Step 7: choose a unique $STAGE name and set the $REGION for your deployed services
+
+We recommend you use your LAN ID to ensure it's unique, but you can use any name you want. Go ahead and set a shell variable to use later on:
+
+```sh
+export STAGE=b0bb
+export REGION=us-west-2
+```
+
+For the rest of the workshop, the commands will reference `$STAGE` and `$REGION` and you will be able to find your components in the AWS console using your stage name.
+
