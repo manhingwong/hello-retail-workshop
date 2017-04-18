@@ -10,6 +10,6 @@
   },
   "homepage": "https://github.com/Nordstrom/hello-retail-workshop/Lesson12_CreateViewWithEventConsumerUsingTheKinesisStreamWithAnOrderGuaranteeAsTheEventLog#readme",
   "dependencies": {
-    "kinesis-handler": "git+https://github.com/Nordstrom/kinesis-handler.git#ENG-2283"
+    "kinesis-handler": "git+https://github.com/Nordstrom/kinesis-handler.git"
   }
 }
