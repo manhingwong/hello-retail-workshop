@@ -286,7 +286,7 @@ const impl = {
             if (err) { // error from dynamo
               updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Creator DynamoDb: ${err}`)
             } else {
-              console.log('Found products ', response.Items) // TODO remove
+              console.log('Found creator products ', response.Items) // TODO remove
 
               const foundScores = response.Items.map(item => item.creatorScore) // There is always a score by this point
               const attValuesCreator = Object.assign({}, attValues)
@@ -357,7 +357,7 @@ const impl = {
                   if (err) { // error from dynamo
                     updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb for the UNKNOWN photographer: ${err}`)
                   } else {
-                    console.log('Found products ', response.Items) // TODO remove
+                    console.log('Found photographer products ', response.Items) // TODO remove
 
                     const foundScores = response.Items.map(item => item.photographerScore) // There is always a score by this point
                     const attValuesUnk = Object.assign({}, attValues)

@@ -132,7 +132,7 @@ const impl = {
     dynamo.query(params, (err, data) => {
       if (err) {
         complete(`${constants.METHOD_GET_EVENTS_THEN_CREDIT} - errors updating DynamoDb: ${err}`)
-      } else if (!data || !data.Items) {
+      } else if (!data || !data.Items || data.Items.length === 0) {
         console.log(`Found no prior events for ${id} before ${baseline}.`) // TODO remove
         complete()
       } else {
@@ -149,7 +149,7 @@ const impl = {
    * @param origin Who/what triggered this update
    * @param roleInfo Who was the photographer or creator for this product
    * @param eventIds Array of event ids for that product needing credit entered into the Events table. Note that there
-   * is either both a photographer and a creator, in which case eventIds is length 1 or it is a bunch of events for a
+   * is either both a photographer and a creator, in which case eventIds is length 1, or it is a bunch of events for a
    * single registration of either a creator or a photographer (but not both).  Expect one or small size generally.
    * Credit should only be assigned if the contributor registered prior to the purchase event, as reflected by the fact
    * the event Id is further along in the sequence for that product than the registration event; the eventIds should
@@ -289,7 +289,7 @@ const impl = {
           if (err) { // error from dynamo
             updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Creator DynamoDb: ${err}`)
           } else {
-            console.log('Found pairs ', response.Items) // TODO remove
+            console.log('Found creator pairs ', response.Items) // TODO remove
             const attValuesCreator = Object.assign({}, attValues)
             attValuesCreator[':sc'] = response.Count
             const dbParamsCreator = {
@@ -331,7 +331,7 @@ const impl = {
           if (err) { // error from dynamo
             updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb: ${err}`)
           } else {
-            console.log('Found pairs ', response.Items) // TODO remove
+            console.log('Found photographer pairs ', response.Items) // TODO remove
             const attValuesPhotographer = Object.assign({}, attValues)
             attValuesPhotographer[':sc'] = response.Count
             const dbParamsPhotographer = {
