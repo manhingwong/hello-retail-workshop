@@ -12,6 +12,7 @@ const productPurchaseSchema = require('./product-purchase-schema.json')
 const constants = {
   // self
   MODULE: 'winner-view/winner.js',
+  NONE: 'NONE',
   // methods
   METHOD_REGISTER_CONTRIBUTOR: 'registerContributor',
   METHOD_UPDATE_SCORES_TABLES: 'updateScoresTable',
@@ -99,9 +100,9 @@ const impl = {
       UpdateExpression: expression.join(' '),
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
-      ReturnValues: 'NONE',
-      ReturnConsumedCapacity: 'NONE',
-      ReturnItemCollectionMetrics: 'NONE',
+      ReturnValues: constants.NONE,
+      ReturnConsumedCapacity: constants.NONE,
+      ReturnItemCollectionMetrics: constants.NONE,
     }
     dynamo.update(dbParamsContributions, updateCallback)
   },
@@ -216,9 +217,9 @@ const impl = {
         UpdateExpression: expression.join(' '),
         ExpressionAttributeNames: attNames,
         ExpressionAttributeValues: attValues,
-        ReturnValues: 'NONE',
-        ReturnConsumedCapacity: 'NONE',
-        ReturnItemCollectionMetrics: 'NONE',
+        ReturnValues: constants.NONE,
+        ReturnConsumedCapacity: constants.NONE,
+        ReturnItemCollectionMetrics: constants.NONE,
       }
       dynamo.update(dbParamsEvents, groupDynamoCallback)
     }
@@ -300,9 +301,9 @@ const impl = {
               UpdateExpression: updateExp,
               ExpressionAttributeNames: attNames,
               ExpressionAttributeValues: attValuesCreator,
-              ReturnValues: 'NONE',
-              ReturnConsumedCapacity: 'NONE',
-              ReturnItemCollectionMetrics: 'NONE',
+              ReturnValues: constants.NONE,
+              ReturnConsumedCapacity: constants.NONE,
+              ReturnItemCollectionMetrics: constants.NONE,
             }
             dynamo.update(dbParamsCreator, updateCallback)
           }
@@ -342,9 +343,9 @@ const impl = {
               UpdateExpression: updateExp,
               ExpressionAttributeNames: attNames,
               ExpressionAttributeValues: attValuesPhotographer,
-              ReturnValues: 'NONE',
-              ReturnConsumedCapacity: 'NONE',
-              ReturnItemCollectionMetrics: 'NONE',
+              ReturnValues: constants.NONE,
+              ReturnConsumedCapacity: constants.NONE,
+              ReturnItemCollectionMetrics: constants.NONE,
             }
             dynamo.update(dbParamsPhotographer, updateCallback)
           }
@@ -384,7 +385,7 @@ const impl = {
         'photographerEventId',
       ],
       ConsistentRead: false,
-      ReturnConsumedCapacity: 'NONE',
+      ReturnConsumedCapacity: constants.NONE,
     }
     dynamo.get(dbParamsContributions, (err, data) => {
       if (err) {

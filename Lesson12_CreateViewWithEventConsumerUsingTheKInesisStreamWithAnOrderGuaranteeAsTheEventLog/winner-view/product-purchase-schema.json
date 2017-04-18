@@ -8,7 +8,7 @@
   },
   "type": "object",
   "properties": {
-    "schema":  { "type": "string", "format": "url" },
+    "schema":  { "type": "string" },
     "id": { "type": "string" }
   },
   "required": [

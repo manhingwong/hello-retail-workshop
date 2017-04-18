@@ -153,10 +153,7 @@ resources:
                   Action:
                     - 'logs:CreateLogStream'
                   Resource:
-                    Fn::Join:
-                      - ':'
-                      - - Fn::GetAtt: [ WinnerLogGroup, Arn ]
-                        - '*'
+                    Fn::GetAtt: [ WinnerLogGroup, Arn ]
                 - Effect: Allow
                   Action:
                     - 'logs:PutLogEvents'

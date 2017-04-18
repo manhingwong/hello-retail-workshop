@@ -13,6 +13,7 @@ const constants = {
   // self
   MODULE: 'winner-view/winner.js',
   UNKNOWN: 'UNKNOWN',
+  NONE: 'NONE',
   // methods
   METHOD_REGISTER_CONTRIBUTOR: 'registerContributor',
   METHOD_UPDATE_SCORES_TABLES: 'updateScoresTable',
@@ -113,9 +114,9 @@ const impl = {
       UpdateExpression: expression.join(' '),
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
-      ReturnValues: 'NONE',
-      ReturnConsumedCapacity: 'NONE',
-      ReturnItemCollectionMetrics: 'NONE',
+      ReturnValues: constants.NONE,
+      ReturnConsumedCapacity: constants.NONE,
+      ReturnItemCollectionMetrics: constants.NONE,
     }
     dynamo.update(dbParamsContributions, updateCallback)
   },
@@ -197,9 +198,9 @@ const impl = {
       ConditionExpression: '#ev < :ev',
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
-      ReturnValues: 'NONE',
-      ReturnConsumedCapacity: 'NONE',
-      ReturnItemCollectionMetrics: 'NONE',
+      ReturnValues: constants.NONE,
+      ReturnConsumedCapacity: constants.NONE,
+      ReturnItemCollectionMetrics: constants.NONE,
     }
     dynamo.update(dbParamsEvents, callback)
   },
@@ -239,7 +240,7 @@ const impl = {
         'photographer',
       ],
       ConsistentRead: false,
-      ReturnConsumedCapacity: 'NONE',
+      ReturnConsumedCapacity: constants.NONE,
     }
     dynamo.get(dbParamsContributions, (errBase, responseBase) => {
       if (errBase) {
@@ -300,9 +301,9 @@ const impl = {
                 UpdateExpression: updateExp,
                 ExpressionAttributeNames: attNames,
                 ExpressionAttributeValues: attValuesCreator,
-                ReturnValues: 'NONE',
-                ReturnConsumedCapacity: 'NONE',
-                ReturnItemCollectionMetrics: 'NONE',
+                ReturnValues: constants.NONE,
+                ReturnConsumedCapacity: constants.NONE,
+                ReturnItemCollectionMetrics: constants.NONE,
               }
               dynamo.update(params, updateCallback)
             }
@@ -371,9 +372,9 @@ const impl = {
                       UpdateExpression: updateExp,
                       ExpressionAttributeNames: attNames,
                       ExpressionAttributeValues: attValuesUnk,
-                      ReturnValues: 'NONE',
-                      ReturnConsumedCapacity: 'NONE',
-                      ReturnItemCollectionMetrics: 'NONE',
+                      ReturnValues: constants.NONE,
+                      ReturnConsumedCapacity: constants.NONE,
+                      ReturnItemCollectionMetrics: constants.NONE,
                     }
                     dynamo.update(params, updateCallback)
                   }
@@ -388,9 +389,9 @@ const impl = {
               UpdateExpression: phExp.join(' '),
               ExpressionAttributeNames: phAttNames,
               ExpressionAttributeValues: phAttValues,
-              ReturnValues: 'NONE',
-              ReturnConsumedCapacity: 'NONE',
-              ReturnItemCollectionMetrics: 'NONE',
+              ReturnValues: constants.NONE,
+              ReturnConsumedCapacity: constants.NONE,
+              ReturnItemCollectionMetrics: constants.NONE,
             }
             dynamo.update(dbParamsPh, phCallback)
           } else if (data.photographer) { // This is the plain-vanilla photographer case.
@@ -428,9 +429,9 @@ const impl = {
                   UpdateExpression: updateExp,
                   ExpressionAttributeNames: attNames,
                   ExpressionAttributeValues: attValuesPhotographer,
-                  ReturnValues: 'NONE',
-                  ReturnConsumedCapacity: 'NONE',
-                  ReturnItemCollectionMetrics: 'NONE',
+                  ReturnValues: constants.NONE,
+                  ReturnConsumedCapacity: constants.NONE,
+                  ReturnItemCollectionMetrics: constants.NONE,
                 }
                 dynamo.update(params, updateCallback)
               }
