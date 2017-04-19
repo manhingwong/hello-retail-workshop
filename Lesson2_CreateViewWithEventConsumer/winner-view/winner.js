@@ -1,7 +1,7 @@
 'use strict'
 
-const AJV = require('ajv')
 const aws = require('aws-sdk') // eslint-disable-line import/no-unresolved, import/no-extraneous-dependencies
+const KH = require('kinesis-handler')
 
 // TODO Get these from a better place later
 const eventSchema = require('./retail-stream-schema-egress.json')
@@ -9,40 +9,25 @@ const productCreateSchema = require('./product-create-schema.json')
 const productImageSchema = require('./product-image-schema.json')
 const productPurchaseSchema = require('./product-purchase-schema.json')
 
-// TODO generalize this?  it is used by but not specific to this module
-const makeSchemaId = schema => `${schema.self.vendor}/${schema.self.name}/${schema.self.version}`
-
-const eventSchemaId = makeSchemaId(eventSchema)
-const productCreateSchemaId = makeSchemaId(productCreateSchema)
-const productImageSchemaId = makeSchemaId(productImageSchema)
-const productPurchaseSchemaId = makeSchemaId(productPurchaseSchema)
-
-const ajv = new AJV()
-ajv.addSchema(eventSchema, eventSchemaId)
-ajv.addSchema(productCreateSchema, productCreateSchemaId)
-ajv.addSchema(productImageSchema, productImageSchemaId)
-ajv.addSchema(productPurchaseSchema, productPurchaseSchemaId)
-
-const dynamo = new aws.DynamoDB.DocumentClient()
-
 const constants = {
   // self
   MODULE: 'winner-view/winner.js',
+  NONE: 'NONE',
   // methods
   METHOD_REGISTER_CONTRIBUTOR: 'registerContributor',
   METHOD_UPDATE_SCORES_TABLES: 'updateScoresTable',
   METHOD_GET_EVENTS_THEN_CREDIT: 'getEventsThenCredit',
-  METHOD_PROCESS_EVENT: 'processEvent',
-  METHOD_PROCESS_KINESIS_EVENT: 'processKinesisEvent',
   METHOD_CREDIT_CONTRIBUTIONS: 'creditContributions',
   METHOD_UPDATE_PURCHASE_EVENT: 'updatePurchaseEvent',
-  // errors
-  BAD_MSG: 'bad msg:',
   // resources
   TABLE_CONTRIBUTIONS_NAME: process.env.TABLE_CONTRIBUTIONS_NAME,
   TABLE_SCORES_NAME: process.env.TABLE_SCORES_NAME,
   TABLE_EVENTS_NAME: process.env.TABLE_EVENTS_NAME,
 }
+
+const kh = new KH.KinesisHandler(eventSchema, constants.MODULE)
+
+const dynamo = new aws.DynamoDB.DocumentClient()
 
 const impl = {
   /**
@@ -115,9 +100,9 @@ const impl = {
       UpdateExpression: expression.join(' '),
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
-      ReturnValues: 'NONE',
-      ReturnConsumedCapacity: 'NONE',
-      ReturnItemCollectionMetrics: 'NONE',
+      ReturnValues: constants.NONE,
+      ReturnConsumedCapacity: constants.NONE,
+      ReturnItemCollectionMetrics: constants.NONE,
     }
     dynamo.update(dbParamsContributions, updateCallback)
   },
@@ -147,7 +132,7 @@ const impl = {
     dynamo.query(params, (err, data) => {
       if (err) {
         complete(`${constants.METHOD_GET_EVENTS_THEN_CREDIT} - errors updating DynamoDb: ${err}`)
-      } else if (!data || !data.Items) {
+      } else if (!data || !data.Items || data.Items.length === 0) {
         console.log(`Found no prior events for ${id} before ${baseline}.`) // TODO remove
         complete()
       } else {
@@ -164,7 +149,7 @@ const impl = {
    * @param origin Who/what triggered this update
    * @param roleInfo Who was the photographer or creator for this product
    * @param eventIds Array of event ids for that product needing credit entered into the Events table. Note that there
-   * is either both a photographer and a creator, in which case eventIds is length 1 or it is a bunch of events for a
+   * is either both a photographer and a creator, in which case eventIds is length 1, or it is a bunch of events for a
    * single registration of either a creator or a photographer (but not both).  Expect one or small size generally.
    * Credit should only be assigned if the contributor registered prior to the purchase event, as reflected by the fact
    * the event Id is further along in the sequence for that product than the registration event; the eventIds should
@@ -232,9 +217,9 @@ const impl = {
         UpdateExpression: expression.join(' '),
         ExpressionAttributeNames: attNames,
         ExpressionAttributeValues: attValues,
-        ReturnValues: 'NONE',
-        ReturnConsumedCapacity: 'NONE',
-        ReturnItemCollectionMetrics: 'NONE',
+        ReturnValues: constants.NONE,
+        ReturnConsumedCapacity: constants.NONE,
+        ReturnItemCollectionMetrics: constants.NONE,
       }
       dynamo.update(dbParamsEvents, groupDynamoCallback)
     }
@@ -304,7 +289,7 @@ const impl = {
           if (err) { // error from dynamo
             updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Creator DynamoDb: ${err}`)
           } else {
-            console.log('Found pairs ', response.Items) // TODO remove
+            console.log('Found creator pairs ', response.Items) // TODO remove
             const attValuesCreator = Object.assign({}, attValues)
             attValuesCreator[':sc'] = response.Count
             const dbParamsCreator = {
@@ -316,9 +301,9 @@ const impl = {
               UpdateExpression: updateExp,
               ExpressionAttributeNames: attNames,
               ExpressionAttributeValues: attValuesCreator,
-              ReturnValues: 'NONE',
-              ReturnConsumedCapacity: 'NONE',
-              ReturnItemCollectionMetrics: 'NONE',
+              ReturnValues: constants.NONE,
+              ReturnConsumedCapacity: constants.NONE,
+              ReturnItemCollectionMetrics: constants.NONE,
             }
             dynamo.update(dbParamsCreator, updateCallback)
           }
@@ -346,7 +331,7 @@ const impl = {
           if (err) { // error from dynamo
             updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb: ${err}`)
           } else {
-            console.log('Found pairs ', response.Items) // TODO remove
+            console.log('Found photographer pairs ', response.Items) // TODO remove
             const attValuesPhotographer = Object.assign({}, attValues)
             attValuesPhotographer[':sc'] = response.Count
             const dbParamsPhotographer = {
@@ -358,9 +343,9 @@ const impl = {
               UpdateExpression: updateExp,
               ExpressionAttributeNames: attNames,
               ExpressionAttributeValues: attValuesPhotographer,
-              ReturnValues: 'NONE',
-              ReturnConsumedCapacity: 'NONE',
-              ReturnItemCollectionMetrics: 'NONE',
+              ReturnValues: constants.NONE,
+              ReturnConsumedCapacity: constants.NONE,
+              ReturnItemCollectionMetrics: constants.NONE,
             }
             dynamo.update(dbParamsPhotographer, updateCallback)
           }
@@ -400,7 +385,7 @@ const impl = {
         'photographerEventId',
       ],
       ConsistentRead: false,
-      ReturnConsumedCapacity: 'NONE',
+      ReturnConsumedCapacity: constants.NONE,
     }
     dynamo.get(dbParamsContributions, (err, data) => {
       if (err) {
@@ -419,150 +404,14 @@ const impl = {
       }
     })
   },
-  /**
-   * Process the given event, reporting failure or success to the given callback
-   * @param event The event to validate and process with the appropriate logic
-   * @param complete The callback with which to report any errors
-   */
-  processEvent: (event, complete) => {
-    if (!event || !event.schema) {
-      complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} event or schema was not truthy.`)
-    } else if (event.schema !== eventSchemaId) {
-      complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} event did not have proper schema.  observed: '${event.schema}' expected: '${eventSchemaId}'`)
-    } else if (!ajv.validate(eventSchemaId, event)) {
-      complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${eventSchemaId}' schema.  Errors: ${ajv.errorsText()}`)
-    } else if (event.data.schema === productCreateSchemaId) {
-      if (!ajv.validate(productCreateSchemaId, event.data)) {
-        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productCreateSchemaId}' schema. Errors: ${ajv.errorsText()}`)
-      } else {
-        impl.registerContributor('creator', event, complete)
-      }
-    } else if (event.data.schema === productImageSchemaId) {
-      if (!ajv.validate(productImageSchemaId, event.data)) {
-        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productImageSchemaId}' schema. Errors: ${ajv.errorsText()}`)
-      } else {
-        impl.registerContributor('photographer', event, complete)
-      }
-    } else if (event.data.schema === productPurchaseSchemaId) {
-      if (!ajv.validate(productPurchaseSchemaId, event.data)) {
-        complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} could not validate event to '${productPurchaseSchemaId}' schema. Errors: ${ajv.errorsText()}`)
-      } else {
-        impl.updatePurchaseEvent(event, complete)
-      }
-    } else {
-      // TODO remove console.log and pass the above message once we are only receiving subscribed events
-      console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} - event with unsupported schema (${event.data.schema}) observed.`)
-      complete()
-    }
-  },
 }
 
-// TODO separate out kinesis-consuming code into a module
+kh.registerSchemaMethodPair(productCreateSchema, impl.registerContributor.bind(null, 'creator'))
+kh.registerSchemaMethodPair(productImageSchema, impl.registerContributor.bind(null, 'photographer'))
+kh.registerSchemaMethodPair(productPurchaseSchema, impl.updatePurchaseEvent)
 
 module.exports = {
-  /**
-   * Example Kinesis Event:
-   * {
-   *   "Records": [
-   *     {
-   *       "kinesis": {
-   *         "kinesisSchemaVersion": "1.0",
-   *         "partitionKey": "undefined",
-   *         "sequenceNumber": "49568749374218235080373793662003016116473266703358230578",
-   *         "data": "eyJzY2hlbWEiOiJjb20ubm9yZHN0cm9tL3JldGFpb[...]Y3NDQiLCJjYXRlZ29yeSI6IlN3ZWF0ZXJzIGZvciBNZW4ifX0=",
-   *         "approximateArrivalTimestamp": 1484245766.362
-   *       },
-   *       "eventSource": "aws:kinesis",
-   *       "eventVersion": "1.0",
-   *       "eventID": "shardId-000000000003:49568749374218235080373793662003016116473266703358230578",
-   *       "eventName": "aws:kinesis:record",
-   *       "invokeIdentityArn": "arn:aws:iam::515126931066:role/devProductCatalogReaderWriter",
-   *       "awsRegion": "us-west-2",
-   *       "eventSourceARN": "arn:aws:kinesis:us-west-2:515126931066:stream/devRetailStream"
-   *     },
-   *     {
-   *       "kinesis": {
-   *         "kinesisSchemaVersion": "1.0",
-   *         "partitionKey": "undefined",
-   *         "sequenceNumber": "49568749374218235080373793662021150003767486140978823218",
-   *         "data": "eyJzY2hlbWEiOiJjb20ubm9yZHN0cm9tL3JldGFpb[...]I3MyIsImNhdGVnb3J5IjoiU3dlYXRlcnMgZm9yIE1lbiJ9fQ==",
-   *         "approximateArrivalTimestamp": 1484245766.739
-   *       },
-   *       "eventSource": "aws:kinesis",
-   *       "eventVersion": "1.0",
-   *       "eventID": "shardId-000000000003:49568749374218235080373793662021150003767486140978823218",
-   *       "eventName": "aws:kinesis:record",
-   *       "invokeIdentityArn": "arn:aws:iam::515126931066:role/devProductCatalogReaderWriter",
-   *       "awsRegion": "us-west-2",
-   *       "eventSourceARN": "arn:aws:kinesis:us-west-2:515126931066:stream/devRetailStream"
-   *     }
-   *   ]
-   * }
-   * @param kinesisEvent The Kinesis event to decode and process.
-   * @param context The Lambda context object.
-   * @param callback The callback with which to call with results of event processing.
-   */
-  processKinesisEvent: (kinesisEvent, context, callback) => {
-    try {
-      console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - kinesis event received: ${JSON.stringify(kinesisEvent, null, 2)}`)
-      if (
-        kinesisEvent &&
-        kinesisEvent.Records &&
-        Array.isArray(kinesisEvent.Records)
-      ) { // TODO convert this to handle events synchronously, if needed to preserve a sequentially-ordered batch
-        let successes = 0
-        const complete = (err) => {
-          if (err) {
-            console.log(err)
-            // TODO uncomment following
-            // throw new Error(`${constants.MODULE} ${err}`);
-            // TODO remove rest of block to use above.
-            const msg = `${constants.MODULE} ${err}`
-            if (msg.indexOf(`${constants.MODULE} ${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG}`) !== -1) {
-              console.log('######################################################################################')
-              console.log(msg)
-              console.log('######################################################################################')
-              successes += 1
-            } else {
-              throw new Error(msg)
-            }
-          } else {
-            successes += 1
-          }
-          if (successes === kinesisEvent.Records.length) {
-            console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - all ${kinesisEvent.Records.length} events processed successfully.`)
-            callback()
-          }
-        }
-        for (let i = 0; i < kinesisEvent.Records.length; i++) {
-          const record = kinesisEvent.Records[i]
-          if (
-            record.kinesis &&
-            record.kinesis.data
-          ) {
-            let parsed
-            try {
-              const payload = new Buffer(record.kinesis.data, 'base64').toString()
-              console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - payload: ${payload}`)
-              parsed = JSON.parse(payload)
-            } catch (ex) {
-              complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} failed to decode and parse the data - "${ex.stack}".`)
-            }
-            if (parsed) {
-              impl.processEvent(parsed, complete)
-            }
-          } else {
-            complete(`${constants.METHOD_PROCESS_EVENT} ${constants.BAD_MSG} record missing kinesis data.`)
-          }
-        }
-      } else {
-        callback(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - no records received.`)
-      }
-    } catch (ex) {
-      console.log(`${constants.MODULE} ${constants.METHOD_PROCESS_KINESIS_EVENT} - exception: ${ex.stack}`)
-      callback(ex)
-    }
-  },
+  processKinesisEvent: kh.processKinesisEvent.bind(kh),
 }
 
 console.log(`${constants.MODULE} - CONST: ${JSON.stringify(constants, null, 2)}`)

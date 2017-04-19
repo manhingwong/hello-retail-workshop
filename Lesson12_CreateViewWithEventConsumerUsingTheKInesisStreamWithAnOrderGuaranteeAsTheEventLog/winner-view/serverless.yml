@@ -23,8 +23,6 @@ functions:
         Ref: Contributions
       TABLE_SCORES_NAME:
         Ref: Scores
-      TABLE_EVENTS_NAME:
-        Ref: Events
     events:
       - stream:
           arn: ${self:custom.stream}
@@ -47,6 +45,10 @@ resources:
         AttributeDefinitions:
           - AttributeName: productId
             AttributeType: S
+          - AttributeName: creator
+            AttributeType: S
+          - AttributeName: photographer
+            AttributeType: S
         KeySchema:
           - AttributeName: productId
             KeyType: HASH
@@ -54,6 +56,31 @@ resources:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
         TableName: ${opt:stage}-Contributions
+        GlobalSecondaryIndexes:
+          - IndexName: ProductsByCreator
+            KeySchema:
+              - AttributeName: creator
+                KeyType: HASH
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - productId
+                - creatorScore
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: ProductsByPhotographer
+            KeySchema:
+              - AttributeName: photographer
+                KeyType: HASH
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - productId
+                - photographerScore
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
     Scores:
       # Number of purchases in which the given contributor was the stated role (creator or photographer) for the product purchased
       Type: AWS::DynamoDB::Table
@@ -85,47 +112,6 @@ resources:
               ProjectionType: INCLUDE
               NonKeyAttributes:
                 - userId
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
-    Events:
-      # Log of all purchase events and attribution of each event to the creator and photographer involved, if any known
-      Type: AWS::DynamoDB::Table
-      Properties:
-        AttributeDefinitions:
-          - AttributeName: productId
-            AttributeType: S
-          - AttributeName: eventId
-            AttributeType: S
-          - AttributeName: creator
-            AttributeType: S
-          - AttributeName: photographer
-            AttributeType: S
-        KeySchema:
-          - AttributeName: productId
-            KeyType: HASH
-          - AttributeName: eventId
-            KeyType: RANGE
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-        TableName: ${opt:stage}-Events
-        GlobalSecondaryIndexes:
-          - IndexName: EventsByCreator
-            KeySchema:
-              - AttributeName: creator
-                KeyType: HASH
-            Projection:
-              ProjectionType: KEYS_ONLY
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
-          - IndexName: EventsByPhotographer
-            KeySchema:
-              - AttributeName: photographer
-                KeyType: HASH
-            Projection:
-              ProjectionType: KEYS_ONLY
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
@@ -188,38 +174,29 @@ resources:
                         - Ref: Contributions
                 -  Effect: Allow
                    Action:
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Contributions
+                        - index
+                        - ProductsByCreator
+                -  Effect: Allow
+                   Action:
+                     - 'dynamodb:Query'
+                   Resource:
+                    Fn::Join:
+                      - '/'
+                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
+                        - ${opt:stage}-Contributions
+                        - index
+                        - ProductsByPhotographer
+                -  Effect: Allow
+                   Action:
                      - 'dynamodb:UpdateItem'
                    Resource:
                     Fn::Join:
                       - '/'
                       - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
                         - Ref: Scores
-                -  Effect: Allow
-                   Action:
-                     - 'dynamodb:UpdateItem'
-                     - 'dynamodb:Query'
-                   Resource:
-                    Fn::Join:
-                      - '/'
-                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
-                        - Ref: Events
-                -  Effect: Allow
-                   Action:
-                     - 'dynamodb:Query'
-                   Resource:
-                    Fn::Join:
-                      - '/'
-                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
-                        - ${opt:stage}-Events
-                        - index
-                        - EventsByCreator
-                -  Effect: Allow
-                   Action:
-                     - 'dynamodb:Query'
-                   Resource:
-                    Fn::Join:
-                      - '/'
-                      - - 'arn:aws:dynamodb:${self:custom.private.region}:${self:custom.private.accountId}:table'
-                        - ${opt:stage}-Events
-                        - index
-                        - EventsByPhotographer
