@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 function open_node_download {
-    echo "Opening Node JS download page ... "
-    echo "https://nodejs.org/en/download/"
+    echo "Dohttps://nodejs.org/en/download/"
+    echo "Attempting to open Node JS download page ... "
     sleep 3
     open "https://nodejs.org/en/download/"
     exit 1
