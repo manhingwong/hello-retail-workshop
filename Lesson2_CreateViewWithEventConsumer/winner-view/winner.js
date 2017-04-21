@@ -133,10 +133,10 @@ const impl = {
       if (err) {
         complete(`${constants.METHOD_GET_EVENTS_THEN_CREDIT} - errors updating DynamoDb: ${err}`)
       } else if (!data || !data.Items || data.Items.length === 0) {
-        console.log(`Found no prior events for ${id} before ${baseline}.`) // TODO remove
+        console.log(`Found no events already logged for ${id} after registration event of ${baseline}.`) // TODO remove
         complete()
       } else {
-        console.log('Found prior events ', data.Items) // TODO remove
+        console.log('Found later events that were already logged needing contributor added ', data.Items) // TODO remove
         impl.creditContributions(id, data.Items.map(item => item.eventId), origin, roleInfo, complete)
       }
     })

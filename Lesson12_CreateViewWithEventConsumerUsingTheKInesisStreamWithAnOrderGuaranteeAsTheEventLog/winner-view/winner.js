@@ -55,7 +55,12 @@ const impl = {
 
     const updateCallback = (err) => {
       if (err) {
-        complete(`${constants.METHOD_REGISTER_CONTRIBUTOR} - errors updating DynamoDb: ${err}`)
+        if (err.code && err.code === 'ConditionalCheckFailedException') {
+          console.log(`${constants.METHOD_REGISTER_CONTRIBUTOR} - registration event has already been processed for ${role}.  Skipping.`)
+          complete()
+        } else {
+          complete(`${constants.METHOD_REGISTER_CONTRIBUTOR} - errors updating DynamoDb: ${err}`)
+        }
       } else {
         complete()
       }
@@ -112,6 +117,7 @@ const impl = {
         productId: event.data.id,
       },
       UpdateExpression: expression.join(' '),
+      ConditionExpression: '#ev < :ev',
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
       ReturnValues: constants.NONE,
