@@ -23,6 +23,9 @@ This should cost less than $10, just remember to delete all resources when you'r
 
 ### Step 3: serverless deployments require AWS credentials
 
+#### Option 0:
+Install the [AWS-CLI](SETUP-AWS-CLI.md) and use the `aws configure` command to setup your credentials.
+
 #### Option 1:
 Go to AWS IAM console --> users --> select your user ID --> security credentials tab
 Select: Create Access Key
