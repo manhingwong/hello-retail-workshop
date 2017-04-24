@@ -28,6 +28,8 @@ functions:
     events:
       - stream:
           arn: ${self:custom.stream}
+          batchSize: 5
+          timeout: 10
           enabled: true
           startingPosition: TRIM_HORIZON
 
