@@ -245,7 +245,7 @@ const impl = {
         'creator',
         'photographer',
       ],
-      ConsistentRead: false,
+      ConsistentRead: true, // Not really critical for scores, because not quite a permanent calculation (re-calculated on the fly, on each purchase event, so *may* get another chance)
       ReturnConsumedCapacity: constants.NONE,
     }
     dynamo.get(dbParamsContributions, (errBase, responseBase) => {
@@ -355,7 +355,7 @@ const impl = {
                     '#ro': 'photographer',
                   },
                   ExpressionAttributeValues: {
-                    ':ro': constants.UNKNOWN,
+                    ':ro': constants.UNKNOWN, // No strong consistency for GSI, so may not pick up (this time around) the overwrite of photographer to UNKNOWN (*may* get another chance, on another purchase event)
                   },
                 }
 

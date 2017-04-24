@@ -119,6 +119,7 @@ const impl = {
       TableName: constants.TABLE_EVENTS_NAME,
       ProjectionExpression: '#e',
       KeyConditionExpression: '#i = :i AND #e > :e',
+      ConsistentRead: true,
       ExpressionAttributeNames: {
         '#i': 'productId',
         '#e': 'eventId',
@@ -327,7 +328,7 @@ const impl = {
           },
         }
 
-        dynamo.query(params, (err, response) => {
+        dynamo.query(params, (err, response) => { // NB can't get strongly consistent read on GSI
           if (err) { // error from dynamo
             updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb: ${err}`)
           } else {
@@ -384,7 +385,7 @@ const impl = {
         'photographer',
         'photographerEventId',
       ],
-      ConsistentRead: false,
+      ConsistentRead: true,
       ReturnConsumedCapacity: constants.NONE,
     }
     dynamo.get(dbParamsContributions, (err, data) => {
