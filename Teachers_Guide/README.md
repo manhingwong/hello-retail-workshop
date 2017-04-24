@@ -26,7 +26,7 @@ export APIID=`aws apigateway get-rest-apis --region us-west-2 | jq --arg stage $
 echo $APIID
 ```
 
-#### Use WGET to query your Winner API
+#### Use CURL to query your Winner API
 
 Now that we've got the Amazon assigned ID of our winner-api we can query it:
 
