@@ -62,9 +62,35 @@ $ export AWS_ACCESS_KEY_ID=<access-key-id>
 $ export AWS_SECRET_ACCESS_KEY=<secret-access-key>
 $ export AWS_SESSION_TOKEN=<session-token>             # this one is optional
 ```
-### Step 4: serverless deployments require some information you may not want to check in to a public repo.  Fill in the information in private.yml.
 
-Here's an example private.yml with the values in the correct format. Specific values will be available during the workshop.
+### Step 4: clone the repo on your local machine
+
+Go to https://github.com/Nordstrom/hello-retail-workshop and fork our Repo, then clone it locally.
+
+From your workshop directory:
+```sh
+$ git clone https://github.com/Nordstrom/hello-retail-workshop.git
+```
+For more information on using github, go to https://help.github.com/articles/fork-a-repo/
+
+
+### Step 5: install serverless node package on your machine.
+
+#### Note: if you are on a VPN and use a proxy, export your proxy to your shell
+```sh
+export proxy=https://your.proxy.com:1234
+```
+
+Regardless, install the serverless.com deployment framework - this will make it easy to deploy serverless components to AWS
+```sh
+# $ sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share}
+# Uncomment the above if you have corrupted your file system and are on MacOSX.
+$ npm install -g serverless
+```
+
+### Step 6: serverless deployments require some information you may not want to check in to a public repo.  Fill in the information in private.yml.
+
+There's an example private.yml in the project with the values in the correct format. Specific values will be available during the workshop.
 
 ```yml
 region: us-east-1
@@ -83,30 +109,6 @@ coreStream:
   awslabsRoleArn: arn:aws:iam::${self:custom.private.coreStream.accountId}:role/fanoutRole
 
 ```
-
-### Step 5: install serverless node package on your machine.
-
-#### Note: if you are on a VPN and use a proxy, export your proxy to your shell
-```sh
-export proxy=https://your.proxy.com:1234
-```
-
-Regardless, install the serverless.com deployment framework - this will make it easy to deploy serverless components to AWS
-```sh
-# $ sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share}
-# Uncomment the above if you have corrupted your file system and are on MacOSX.
-$ npm install -g serverless
-```
-
-### Step 6: clone the repo on your local machine
-
-Go to https://github.com/Nordstrom/hello-retail-workshop and fork our Repo, then clone it locally.
-
-From your workshop directory:
-```sh
-$ git clone https://github.com/Nordstrom/hello-retail-workshop.git
-```
-For more information on using github, go to https://help.github.com/articles/fork-a-repo/
 
 ### Step 7: choose a unique $STAGE name and set the $REGION for your deployed services
 
