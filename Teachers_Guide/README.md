@@ -22,7 +22,7 @@ In-depth examination of this tools is also beyond the scope of this workshop, bu
 This command combines the AWS-CLI tools and JQ to get the ID of the API we just deployed above.
 
 ```sh
-export APIID=`aws apigateway get-rest-apis --region us-west-2 | jq '.items[] | select(.name | startswith("${STAGE}")) | .id' | sed 's/"//g'`
+export APIID=`aws apigateway get-rest-apis --region us-west-2 | jq --arg stage $STAGE '.items[] | select(.name | startswith($stage)) | .id' | sed 's/"//g'`
 echo $APIID
 ```
 
@@ -31,7 +31,7 @@ echo $APIID
 Now that we've got the Amazon assigned ID of our winner-api we can query it:
 
 ```sh
-wget -qO- "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/scores?role=creator&limit=2" | more
-wget -qO- "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/scores?role=photographer&limit=2" | more
-wget -qO- "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/contributions" | more
+curl -o - "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/scores?role=creator&limit=2" | more
+curl -o - "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/scores?role=photographer&limit=2" | more
+curl -o - "https://${APIID}.execute-api.us-west-2.amazonaws.com/${STAGE}/contributions" | more
 ```
