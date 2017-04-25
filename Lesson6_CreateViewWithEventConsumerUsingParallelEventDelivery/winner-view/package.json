@@ -8,7 +8,7 @@
   "bugs": {
     "url": "https://github.com/Nordstrom/hello-retail-workshop/issues"
   },
-  "homepage": "https://github.com/Nordstrom/hello-retail-workshop/Lesson2_CreateViewWithEventConsumer#readme",
+  "homepage": "https://github.com/Nordstrom/hello-retail-workshop/Lesson6_CreateViewWithEventConsumerUsingParallelEventDelivery#readme",
   "dependencies": {
     "kinesis-handler": "git+https://github.com/Nordstrom/kinesis-handler.git"
   }

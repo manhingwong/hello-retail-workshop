@@ -1,4 +1,7 @@
-# Lesson 6: Create a DynamoDB view of the merchant's and photographer's work and sales, using the Kinesis stream an event collection, but without an explicit order guarantee on the events within it
+# Lesson 6: Interpret events for a view of Merchant and Photographer contributions.
+
+Create a DynamoDB view of the Merchant's and Photographer's work and sales, using the Kinesis stream an event collection, but without an explicit order guarantee on the events within it
+
 Goal: Deploy a new lambda function that reads from the very beginning of your kinesis event stream.  This Lambda function looks for new item events, new photograph events, and sales events.
 As items are created and photographed, the contributions table will be updated.  As they are sold, the scores table is updated.  This data view of the raw events will be used in Lesson 3 to expose the winners.  The design differs from that of Lesson 2 in that this does not assume the existence of an order guarantee on the stream.
 

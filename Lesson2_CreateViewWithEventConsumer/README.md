@@ -1,4 +1,7 @@
-# Lesson 2: Create a DynamoDB view of the merchant's and photographer's work and sales, using the Kinesis stream as an event log
+# Lesson 2: Interpret events for a view of Merchant and Photographer contributions.
+
+Create a DynamoDB view of the Merchant's and Photographer's work and sales, using the Kinesis stream as an event log
+
 Goal: Deploy a new lambda function that reads from the very beginning of your kinesis event stream.  This Lambda function looks for new item events, new photograph events, and sales events.
 As items are created and photographed, the contributions table will be updated.  As they are sold, the scores table is updated.
 
@@ -12,7 +15,7 @@ Notice that the winner lambda has its event trigger as the stream and its starti
 ### Step 3: View the lambda code (winner.js)
 Here you can see that the lambda is parsing events and updating the contributions and scores DynamoDB tables as appropriate.
 
-The code tracks the eventId of only the last processed purchase, a benefit of the order guarantee.  It tracks this so that re-tries do not get re-processed.
+The code uses the monotonically increasing event ID of the last processed purchase to avoid applying the proper effect of an event multiple times. This is an important benefit of the event ordering and ID value guarantees and results in idempotency.
 
 The Contributions table is updated with not only the eventId of the last purchase, but also the total quantity of that product purchased, which is an aggregation of purchase events.
 It is important to note that the aggregation can only be at the product level, within the Contributions table.  We cannot, without arduous coding, maintain an aggregation at the level of the Scores table, even though that is the information we ultimately want.
@@ -23,7 +26,7 @@ This is because the scores accumulate over all products.  Product events will be
 From your winner-view directory
 ```sh
 $ npm install
-$ serverless deploy -s <your stage name>
+$ serverless deploy -s $STAGE
 ```
 ### Step 5: confirm that the lambda function is deployed
 Look in the AWS console under Lambda - look for the winner lambda
