@@ -25,7 +25,7 @@ const constants = {
   TABLE_EVENTS_NAME: process.env.TABLE_EVENTS_NAME,
 }
 
-const kh = new KH.KinesisHandler(eventSchema, constants.MODULE)
+const kh = new KH.KinesisSynchronousHandler(eventSchema, constants.MODULE)
 
 const dynamo = new aws.DynamoDB.DocumentClient()
 
@@ -110,7 +110,7 @@ const impl = {
    * Get events from the Events table that will need to have the contributor attached to them.
    * @param id The product id
    * @param origin Who/what triggered this update
-   * @param roleInfo Who was the hotographer or creator for this product
+   * @param roleInfo Who was the photographer or creator for this product
    * @param baseline The eventId that first registered the contributor, so credit is only applied subsequently.
    * @param complete The callback to inform of completion, with optional error parameter.
    */
@@ -119,6 +119,7 @@ const impl = {
       TableName: constants.TABLE_EVENTS_NAME,
       ProjectionExpression: '#e',
       KeyConditionExpression: '#i = :i AND #e > :e',
+      ConsistentRead: true,
       ExpressionAttributeNames: {
         '#i': 'productId',
         '#e': 'eventId',
@@ -133,10 +134,10 @@ const impl = {
       if (err) {
         complete(`${constants.METHOD_GET_EVENTS_THEN_CREDIT} - errors updating DynamoDb: ${err}`)
       } else if (!data || !data.Items || data.Items.length === 0) {
-        console.log(`Found no prior events for ${id} before ${baseline}.`) // TODO remove
+        console.log(`Found no events already logged for ${id}, but occurring after the registration event ${baseline}.`) // TODO remove
         complete()
       } else {
-        console.log('Found prior events ', data.Items) // TODO remove
+        console.log('Found later events that were already logged, needing contributor added ', data.Items) // TODO remove
         impl.creditContributions(id, data.Items.map(item => item.eventId), origin, roleInfo, complete)
       }
     })
@@ -327,7 +328,7 @@ const impl = {
           },
         }
 
-        dynamo.query(params, (err, response) => {
+        dynamo.query(params, (err, response) => { // NB can't get strongly consistent read on GSI
           if (err) { // error from dynamo
             updateCallback(`${constants.METHOD_UPDATE_SCORES_TABLES} - errors getting records from GSI Photographer DynamoDb: ${err}`)
           } else {
@@ -384,7 +385,7 @@ const impl = {
         'photographer',
         'photographerEventId',
       ],
-      ConsistentRead: false,
+      ConsistentRead: true,
       ReturnConsumedCapacity: constants.NONE,
     }
     dynamo.get(dbParamsContributions, (err, data) => {

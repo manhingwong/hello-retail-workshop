@@ -55,7 +55,12 @@ const impl = {
 
     const updateCallback = (err) => {
       if (err) {
-        complete(`${constants.METHOD_REGISTER_CONTRIBUTOR} - errors updating DynamoDb: ${err}`)
+        if (err.code && err.code === 'ConditionalCheckFailedException') {
+          console.log(`${constants.METHOD_REGISTER_CONTRIBUTOR} - registration event has already been processed for ${role}.  Skipping.`)
+          complete()
+        } else {
+          complete(`${constants.METHOD_REGISTER_CONTRIBUTOR} - errors updating DynamoDb: ${err}`)
+        }
       } else {
         complete()
       }
@@ -112,6 +117,7 @@ const impl = {
         productId: event.data.id,
       },
       UpdateExpression: expression.join(' '),
+      ConditionExpression: 'attribute_not_exists(#ev) OR #ev < :ev',
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
       ReturnValues: constants.NONE,
@@ -195,7 +201,7 @@ const impl = {
         productId: id,
       },
       UpdateExpression: expression.join(' '),
-      ConditionExpression: '#ev < :ev',
+      ConditionExpression: 'attribute_not_exists(#ev) OR #ev < :ev',
       ExpressionAttributeNames: attNames,
       ExpressionAttributeValues: attValues,
       ReturnValues: constants.NONE,
@@ -239,7 +245,7 @@ const impl = {
         'creator',
         'photographer',
       ],
-      ConsistentRead: false,
+      ConsistentRead: true, // Not really critical for scores, because not quite a permanent calculation (re-calculated on the fly, on each purchase event, so *may* get another chance)
       ReturnConsumedCapacity: constants.NONE,
     }
     dynamo.get(dbParamsContributions, (errBase, responseBase) => {
@@ -349,7 +355,7 @@ const impl = {
                     '#ro': 'photographer',
                   },
                   ExpressionAttributeValues: {
-                    ':ro': constants.UNKNOWN,
+                    ':ro': constants.UNKNOWN, // No strong consistency for GSI, so may not pick up (this time around) the overwrite of photographer to UNKNOWN (*may* get another chance, on another purchase event)
                   },
                 }
 

@@ -18,6 +18,7 @@ functions:
     role:
       Fn::GetAtt: [ WinnerReaderWriter, Arn ]
     handler: winner.processKinesisEvent
+    timeout: 10
     environment:
       TABLE_CONTRIBUTIONS_NAME:
         Ref: Contributions
@@ -26,6 +27,7 @@ functions:
     events:
       - stream:
           arn: ${self:custom.stream}
+          batchSize: 5
           enabled: true
           startingPosition: TRIM_HORIZON
 
