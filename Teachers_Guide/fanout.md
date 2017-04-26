@@ -1,6 +1,6 @@
 # Using a Fanout
 
-If you're curious about the fan-out Lambda we're using to write to everyone's stream: https://github.com/Nordstrom/aws-lambda-fanout, which is forked from https://github.com/awslabs/aws-lambda-fanout.  Here are the simplified instructions for using their CLI to deploy a fanout service.  *Note that this is not using the Serverless Framework for deployment and management.*
+If you're curious about the fan-out Lambda we're using to write to everyone's stream: https://github.com/Nordstrom/aws-lambda-fanout#ingress-egress, which is forked from https://github.com/awslabs/aws-lambda-fanout.  Here are the simplified instructions for using their CLI to deploy a fanout service.  *Note that this is not using the Serverless Framework for deployment and management.*
 ### Step A: Clone the aws-lambda-fanout repo and cd to the aws-lambda-fanout directory.  Ensure you have set up your AWS credentials for the account in which you have deployed hello-retail.  Then you can directly type
 ```sh
 $ ./fanout deploy
