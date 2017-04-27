@@ -23,3 +23,26 @@ The id does not have to be your stage, but does need to be something unique amon
 ./fanout hook --source-arn arn:aws:kinesis:<CoreStreamAWSRegion>:<CoreStreamAWSAccountNumber>:stream/<CoreStreamName> --starting-position TRIM_HORIZON
 ```
 It may take ten minutes before the initial set of records are delivered and the local stream is truly streaming.  The local stream will get only the events that the fanout has processed since the registration was activated for the local stream.  To get the full stream, hook the kinesis stream to the fanout after all local streams have been registered and activated.
+
+## Using the AWS CLI to show Role and Stream ARNs
+
+Using the [AWS CLI](../Lesson0_BeforeWorkshop/SETUP-AWS-CLI.md), you can execute this script to show the ARNs needed:
+
+```sh
+./show-stream-and-role-arns.sh
+```
+
+It contains the following two commands:
+
+```sh
+aws iam list-roles | grep Arn | grep $STAGE | sed -n "s/^.*\(arn\:aws\:iam\:\:[0-9]*\:role\/.*StreamWriter\).*/\1/p"
+aws kinesis describe-stream --stream-name `aws kinesis list-streams | grep $STAGE | sed -n "s/^.*\"\(.*\)\".*/\1/p"` | grep StreamARN | sed -n "s/^.*\(arn\:aws\:kinesis\:.*Stream\).*/\1/p"
+```
+
+1. Here we invoke AWS CLI to list all of the roles in the account, using `aws iam list-roles`. We then use `grep` and `sed` to filter and shape the output until only the ARN for the StreamWriter role is left.
+2. This two-step command starts by using the AWS command `aws kinesis list-streams` to output the names of all the Kinesis streams in the account, then we `grep` and get our stream name, which we pass to the `aws kinesis describe-stream` as the `stream-name` parameter. From all of the many properties provided for our stream, we `grep` and `sed` to just get the ARN value.
+
+You can run the commands above removing the `grep` and `sed` portions to explore the output in its raw form and you might notice that the output is in JSON, if you have the AWS CLI configured for that.
+
+Ultimately, `grep` and `sed` are not very maintainable as a solution and don't take advantage of the structure provided by the output.
+It's recommended that you stream the output of these commands to other tools, e.g. JQ.
