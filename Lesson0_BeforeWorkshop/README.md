@@ -7,7 +7,7 @@ Go to https://github.com/Nordstrom/hello-retail-workshop and fork our Repo, then
 
 From your workshop directory:
 ```sh
-$ git clone https://github.com/Nordstrom/hello-retail-workshop.git
+$ git clone https://github.com/<GitHubID>/hello-retail-workshop.git
 ```
 For more information on using github, go to https://help.github.com/articles/fork-a-repo/
 
