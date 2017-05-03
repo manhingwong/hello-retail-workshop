@@ -1,0 +1,14 @@
+region: #<Your AWS Region>
+
+profile: #<Your AWS Credentials Profile Name>
+accountId: #<Your AWS Account ID>
+
+teamRole: #<Your IAM Role>
+teamPolicy: #<Your Team's Managed Policy for your IAM Role>
+
+# deploymentBucket: #<optional S3 bucket> # uncomment the use of this variable in your serverless.yml files to deploy to a specific bucket
+
+# Core Stream
+coreStream:
+  accountId: #<Core Retail Stream's Account ID>
+  awslabsRoleArn: arn:aws:iam::${self:custom.private.coreStream.accountId}:role/fanoutRole

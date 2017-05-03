@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "self": {
+    "vendor": "com.nordstrom",
+    "name": "contributions/request",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "path":                   { "type": "string", "pattern": "^/contributions" },
+    "httpMethod":             { "type": "string", "pattern": "^GET$" }
+  },
+  "required": [
+    "path",
+    "httpMethod"
+  ],
+  "additionalProperties": true
+}

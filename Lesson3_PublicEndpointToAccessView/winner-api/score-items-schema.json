@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "self": {
+    "vendor": "com.nordstrom",
+    "name": "score/items",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "role":        { "type": "string" },
+      "score":         { "type": "number" },
+      "userId":  { "type": "string" }
+    },
+    "required": [
+      "score",
+      "userId"
+    ],
+    "additionalProperties": false
+  },
+  "additionalProperties": false
+}
